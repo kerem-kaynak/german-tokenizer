@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Run tests
+        run: go test -v ./...
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+
+          # Linux
+          GOOS=linux GOARCH=amd64 go build -o dist/tokenize-linux-amd64 ./cmd/tokenize
+          GOOS=linux GOARCH=arm64 go build -o dist/tokenize-linux-arm64 ./cmd/tokenize
+
+          # macOS
+          GOOS=darwin GOARCH=amd64 go build -o dist/tokenize-darwin-amd64 ./cmd/tokenize
+          GOOS=darwin GOARCH=arm64 go build -o dist/tokenize-darwin-arm64 ./cmd/tokenize
+
+          # Windows
+          GOOS=windows GOARCH=amd64 go build -o dist/tokenize-windows-amd64.exe ./cmd/tokenize
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*
+          generate_release_notes: true
