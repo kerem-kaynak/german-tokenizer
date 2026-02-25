@@ -20,29 +20,6 @@ type NormalizerConfig struct {
 	StemGerman           bool
 }
 
-// DefaultConfig returns the standard configuration with all features enabled.
-func DefaultConfig() Config {
-	return Config{
-		Cache:             true,
-		LowercaseOriginal: true,
-		Normalizers:       DefaultNormalizerConfig(),
-	}
-}
-
-// DefaultNormalizerConfig returns all normalizers enabled.
-func DefaultNormalizerConfig() NormalizerConfig {
-	return NormalizerConfig{
-		NFKDDecompose:        true,
-		RemoveControlChars:   true,
-		Lowercase:            true,
-		NormalizeQuotes:      true,
-		ExpandLigatures:      true,
-		ConvertEszett:        true,
-		RemoveCombiningMarks: true,
-		StemGerman:           true,
-	}
-}
-
 // buildNormalizer creates a Normalizer from the config.
 func (nc NormalizerConfig) buildNormalizer() *Normalizer {
 	var steps []NormalizerFunc
@@ -101,9 +78,6 @@ type Tokenizer struct {
 //	        StemGerman:           true,
 //	    },
 //	})
-//
-//	// Or use defaults:
-//	tok, _ := NewTokenizer(dictPath, DefaultConfig())
 func NewTokenizer(dictPath string, cfg Config) (*Tokenizer, error) {
 	dict, err := NewDictionary(dictPath)
 	if err != nil {

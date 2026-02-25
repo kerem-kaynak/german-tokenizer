@@ -19,7 +19,20 @@ func main() {
 
 	dictPath := os.Args[1]
 
-	tok, err := tokenizer.NewTokenizer(dictPath, tokenizer.DefaultConfig())
+	tok, err := tokenizer.NewTokenizer(dictPath, tokenizer.Config{
+		Cache:             true,
+		LowercaseOriginal: true,
+		Normalizers: tokenizer.NormalizerConfig{
+			NFKDDecompose:        true,
+			RemoveControlChars:   true,
+			Lowercase:            true,
+			NormalizeQuotes:      true,
+			ExpandLigatures:      true,
+			ConvertEszett:        true,
+			RemoveCombiningMarks: true,
+			StemGerman:           true,
+		},
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading dictionary: %v\n", err)
 		os.Exit(1)

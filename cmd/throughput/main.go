@@ -33,7 +33,20 @@ func main() {
 	// Load tokenizer
 	fmt.Print("Loading German compound word components dictionary... ")
 	start := time.Now()
-	tok, err := tokenizer.NewTokenizer(dictPath, tokenizer.DefaultConfig())
+	tok, err := tokenizer.NewTokenizer(dictPath, tokenizer.Config{
+		Cache:             true,
+		LowercaseOriginal: true,
+		Normalizers: tokenizer.NormalizerConfig{
+			NFKDDecompose:        true,
+			RemoveControlChars:   true,
+			Lowercase:            true,
+			NormalizeQuotes:      true,
+			ExpandLigatures:      true,
+			ConvertEszett:        true,
+			RemoveCombiningMarks: true,
+			StemGerman:           true,
+		},
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
