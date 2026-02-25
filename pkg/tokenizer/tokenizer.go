@@ -1,52 +1,116 @@
 package tokenizer
 
+// Option configures a Tokenizer.
+type Option func(*config)
+
+// config holds tokenizer configuration with defaults.
+type config struct {
+	cache                    bool
+	includeLowercaseOriginal bool
+	normalizerSteps          []NormalizerFunc
+}
+
+// defaultConfig returns configuration with sensible defaults.
+func defaultConfig() *config {
+	return &config{
+		cache:                    true,
+		includeLowercaseOriginal: true,
+		normalizerSteps:          nil, // nil means use default normalizer
+	}
+}
+
+// WithCache enables compound splitting cache (default: true).
+func WithCache(enabled bool) Option {
+	return func(c *config) {
+		c.cache = enabled
+	}
+}
+
+// WithLowercaseOriginal includes lowercase original token in output (default: true).
+// When enabled, "Wärmedämmung" outputs both "wärmedämmung" and normalized segments.
+// When disabled, only normalized segments are output.
+func WithLowercaseOriginal(enabled bool) Option {
+	return func(c *config) {
+		c.includeLowercaseOriginal = enabled
+	}
+}
+
+// WithNormalizerSteps sets custom normalization steps.
+// Pass nil or omit to use default pipeline (all steps).
+// Example: WithNormalizerSteps(NFKDDecompose, Lowercase, StemGerman)
+func WithNormalizerSteps(steps ...NormalizerFunc) Option {
+	return func(c *config) {
+		c.normalizerSteps = steps
+	}
+}
+
 // Tokenizer is the main German tokenizer.
 type Tokenizer struct {
-	dict       *Dictionary
-	normalizer *Normalizer
-	splitter   *CompoundSplitter
+	dict                     *Dictionary
+	normalizer               *Normalizer
+	splitter                 *CompoundSplitter
+	includeLowercaseOriginal bool
 }
 
-// NewTokenizer creates a tokenizer with the default normalizer pipeline.
-func NewTokenizer(dictPath string) (*Tokenizer, error) {
+// NewTokenizer creates a tokenizer with the given options.
+//
+// Example usage:
+//
+//	// Default configuration (cache on, lowercase original on, all normalizers)
+//	tok, _ := NewTokenizer(dictPath)
+//
+//	// Disable cache
+//	tok, _ := NewTokenizer(dictPath, WithCache(false))
+//
+//	// Disable lowercase original output
+//	tok, _ := NewTokenizer(dictPath, WithLowercaseOriginal(false))
+//
+//	// Custom normalizer pipeline (skip eszett conversion)
+//	tok, _ := NewTokenizer(dictPath, WithNormalizerSteps(
+//	    NFKDDecompose,
+//	    Lowercase,
+//	    RemoveCombiningMarks,
+//	    StemGerman,
+//	))
+//
+//	// Combine options
+//	tok, _ := NewTokenizer(dictPath,
+//	    WithCache(false),
+//	    WithLowercaseOriginal(false),
+//	    WithNormalizerSteps(Lowercase, StemGerman),
+//	)
+func NewTokenizer(dictPath string, opts ...Option) (*Tokenizer, error) {
+	cfg := defaultConfig()
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
 	dict, err := NewDictionary(dictPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Tokenizer{
-		dict:       dict,
-		normalizer: NewNormalizer(),
-		splitter:   NewCompoundSplitter(dict),
-	}, nil
-}
+	// Build normalizer
+	var normalizer *Normalizer
+	if cfg.normalizerSteps != nil {
+		normalizer = NewNormalizerWithSteps(cfg.normalizerSteps...)
+	} else {
+		normalizer = NewNormalizer()
+	}
 
-// NewTokenizerWithNormalizer creates a tokenizer with a custom normalizer.
-func NewTokenizerWithNormalizer(dictPath string, norm *Normalizer) (*Tokenizer, error) {
-	dict, err := NewDictionary(dictPath)
-	if err != nil {
-		return nil, err
+	// Build compound splitter
+	var splitter *CompoundSplitter
+	if cfg.cache {
+		splitter = NewCompoundSplitter(dict)
+	} else {
+		splitter = NewCompoundSplitterNoCache(dict)
 	}
 
 	return &Tokenizer{
-		dict:       dict,
-		normalizer: norm,
-		splitter:   NewCompoundSplitter(dict),
-	}, nil
-}
-
-// NewTokenizerNoCache creates a tokenizer with caching disabled.
-// Use this when memory is constrained or compounds are rarely repeated.
-func NewTokenizerNoCache(dictPath string) (*Tokenizer, error) {
-	dict, err := NewDictionary(dictPath)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Tokenizer{
-		dict:       dict,
-		normalizer: NewNormalizer(),
-		splitter:   NewCompoundSplitterNoCache(dict),
+		dict:                     dict,
+		normalizer:               normalizer,
+		splitter:                 splitter,
+		includeLowercaseOriginal: cfg.includeLowercaseOriginal,
 	}, nil
 }
 
@@ -65,11 +129,13 @@ func (t *Tokenizer) Tokenize(text string) []string {
 		// Compound decomposition
 		segments := t.splitter.Split(raw.Text)
 
-		// Add lowercase original (preserves umlauts)
-		original := t.normalizer.LowercaseOnly(raw.Text)
-		if _, exists := resultSet[original]; !exists {
-			resultSet[original] = struct{}{}
-			results = append(results, original)
+		// Add lowercase original (preserves umlauts) if enabled
+		if t.includeLowercaseOriginal {
+			original := t.normalizer.LowercaseOnly(raw.Text)
+			if _, exists := resultSet[original]; !exists {
+				resultSet[original] = struct{}{}
+				results = append(results, original)
+			}
 		}
 
 		// Add normalized+stemmed segments
@@ -125,4 +191,9 @@ func (t *Tokenizer) ClearCache() {
 // CacheEnabled returns true if caching is enabled.
 func (t *Tokenizer) CacheEnabled() bool {
 	return t.splitter.CacheEnabled()
+}
+
+// LowercaseOriginalEnabled returns true if lowercase original output is enabled.
+func (t *Tokenizer) LowercaseOriginalEnabled() bool {
+	return t.includeLowercaseOriginal
 }

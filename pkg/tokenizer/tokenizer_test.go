@@ -124,15 +124,13 @@ func TestTokenizer_MultipleWords(t *testing.T) {
 func TestTokenizer_WithCustomNormalizer(t *testing.T) {
 	dictPath := getTestDictPath()
 
-	// Create normalizer without stemming
-	norm := NewNormalizerWithSteps(
+	// Create tokenizer with custom normalizer steps (without stemming)
+	tok, err := NewTokenizer(dictPath, WithNormalizerSteps(
 		NFKDDecompose,
 		Lowercase,
 		ConvertEszett,
 		RemoveCombiningMarks,
-	)
-
-	tok, err := NewTokenizerWithNormalizer(dictPath, norm)
+	))
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -148,6 +146,59 @@ func TestTokenizer_WithCustomNormalizer(t *testing.T) {
 
 	if !resultSet["grosse"] {
 		t.Errorf("Expected 'grosse' in result, got %v", result)
+	}
+}
+
+func TestTokenizer_WithoutLowercaseOriginal(t *testing.T) {
+	dictPath := getTestDictPath()
+
+	tok, err := NewTokenizer(dictPath, WithLowercaseOriginal(false))
+	if err != nil {
+		t.Fatalf("Failed to create tokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	result := tok.Tokenize("Brandschutzkonzept")
+
+	// Without lowercase original, should NOT contain "brandschutzkonzept"
+	// but should contain the normalized segments
+	resultSet := make(map[string]bool)
+	for _, tok := range result {
+		resultSet[tok] = true
+	}
+
+	if resultSet["brandschutzkonzept"] {
+		t.Errorf("Expected 'brandschutzkonzept' to NOT be in result with WithLowercaseOriginal(false), got %v", result)
+	}
+
+	// Should still have segments
+	if !resultSet["brand"] {
+		t.Errorf("Expected 'brand' in result, got %v", result)
+	}
+}
+
+func TestTokenizer_WithoutCache(t *testing.T) {
+	dictPath := getTestDictPath()
+
+	tok, err := NewTokenizer(dictPath, WithCache(false))
+	if err != nil {
+		t.Fatalf("Failed to create tokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	if tok.CacheEnabled() {
+		t.Error("Expected cache to be disabled")
+	}
+
+	// Should still tokenize correctly
+	result := tok.Tokenize("Brandschutzkonzept")
+	resultSet := make(map[string]bool)
+	for _, tok := range result {
+		resultSet[tok] = true
+	}
+
+	if !resultSet["brand"] {
+		t.Errorf("Expected 'brand' in result, got %v", result)
 	}
 }
 
