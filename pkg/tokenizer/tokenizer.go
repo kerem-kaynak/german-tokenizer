@@ -141,20 +141,15 @@ func (t *Tokenizer) Tokenize(text string) []string {
 }
 
 // AddWord adds a word to the dictionary.
-// Note: Changes are not persisted until RebuildDictionary() is called.
-func (t *Tokenizer) AddWord(word string) {
-	t.dict.AddWord(word)
+// Rebuilds FST immediately and persists to disk.
+func (t *Tokenizer) AddWord(word string) error {
+	return t.dict.AddWord(word)
 }
 
 // RemoveWord removes a word from the dictionary.
-// Note: Changes are not persisted until RebuildDictionary() is called.
-func (t *Tokenizer) RemoveWord(word string) {
-	t.dict.RemoveWord(word)
-}
-
-// RebuildDictionary rebuilds the FST and persists changes to disk.
-func (t *Tokenizer) RebuildDictionary() error {
-	return t.dict.RebuildFST()
+// Rebuilds FST immediately and persists to disk.
+func (t *Tokenizer) RemoveWord(word string) error {
+	return t.dict.RemoveWord(word)
 }
 
 // Close releases resources (call when done with tokenizer).

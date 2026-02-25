@@ -30,14 +30,13 @@ func main() {
 			os.Exit(1)
 		}
 		for _, word := range os.Args[3:] {
-			dict.AddWord(word)
+			if err := dict.AddWord(word); err != nil {
+				fmt.Fprintf(os.Stderr, "Error adding word '%s': %v\n", word, err)
+				os.Exit(1)
+			}
 			fmt.Printf("Added: %s\n", word)
 		}
-		if err := dict.RebuildFST(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error rebuilding FST: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("FST rebuilt. Total words: %d\n", dict.WordCount())
+		fmt.Printf("Total words: %d\n", dict.WordCount())
 
 	case "remove":
 		if len(os.Args) < 4 {
@@ -45,14 +44,13 @@ func main() {
 			os.Exit(1)
 		}
 		for _, word := range os.Args[3:] {
-			dict.RemoveWord(word)
+			if err := dict.RemoveWord(word); err != nil {
+				fmt.Fprintf(os.Stderr, "Error removing word '%s': %v\n", word, err)
+				os.Exit(1)
+			}
 			fmt.Printf("Removed: %s\n", word)
 		}
-		if err := dict.RebuildFST(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error rebuilding FST: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("FST rebuilt. Total words: %d\n", dict.WordCount())
+		fmt.Printf("Total words: %d\n", dict.WordCount())
 
 	case "contains":
 		if len(os.Args) < 4 {
@@ -77,7 +75,6 @@ func main() {
 	case "stats":
 		fmt.Printf("Dictionary: %s\n", dictPath)
 		fmt.Printf("Word count: %d\n", dict.WordCount())
-		fmt.Printf("Dirty: %v\n", dict.IsDirty())
 
 	default:
 		fmt.Printf("Unknown command: %s\n", command)

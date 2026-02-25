@@ -55,26 +55,21 @@ func main() {
 
 ## Dictionary
 
-The tokenizer requires a dictionary of German compound word components. A dictionary with 15,615 words is included at `dictionaries/german_compound_word_components.txt`.
+The tokenizer requires a dictionary of German compound word components. A dictionary with 15,615 words is included at `dictionaries/german_compound_word_components.txt`, derived from the open-source [Hunspell German dictionary](https://github.com/wooorm/dictionaries/tree/main/dictionaries/de).
 
 You can also use your own dictionary - one word per line, lowercase.
 
 ### Runtime Dictionary Updates
 
-Words can be added or removed at runtime without restarting:
+Words can be added or removed at runtime. Changes are immediately persisted to disk and the FST is rebuilt:
 
 ```go
-// Add a word - immediately available for lookups
-tok.AddWord("neueswort")
+// Add a word - FST is rebuilt immediately
+err := tok.AddWord("neueswort")
 
-// Remove a word - immediately takes effect
-tok.RemoveWord("alteswort")
-
-// Persist changes to disk (optional)
-tok.RebuildDictionary()
+// Remove a word - FST is rebuilt immediately
+err := tok.RemoveWord("alteswort")
 ```
-
-When you call `AddWord()` or `RemoveWord()`, the dictionary is marked as dirty and subsequent lookups use the in-memory map. Call `RebuildDictionary()` to persist changes to disk and rebuild the FST.
 
 ## Configuration
 
@@ -245,16 +240,16 @@ make demo
 
 ```bash
 # Show dictionary statistics
-./bin/dictmgr dictionaries/german_compound_word_components.txt stats
+make dict-stats
 
 # Check if a word exists
-./bin/dictmgr dictionaries/german_compound_word_components.txt contains haus
+make dict-contains WORD=haus
 
 # Add a word
-./bin/dictmgr dictionaries/german_compound_word_components.txt add neueswort
+make dict-add WORD=neueswort
 
 # Remove a word
-./bin/dictmgr dictionaries/german_compound_word_components.txt remove alteswort
+make dict-remove WORD=alteswort
 ```
 
 ### Throughput Benchmarking
@@ -265,6 +260,17 @@ make throughput
 
 ## Performance
 
+Benchmarks on Apple M4 Pro:
+
+| Operation | Throughput | Latency |
+|-----------|------------|---------|
+| Single word tokenization | 720k ops/sec | 1.4μs |
+| Long compound tokenization | 530k ops/sec | 1.9μs |
+| Sentence (10 words) | 200k ops/sec | 4.9μs |
+| Dictionary lookup | 273M ops/sec | 4ns |
+| Normalizer (full pipeline) | 1.4M ops/sec | 736ns |
+| Cache hit | 54M ops/sec | 19ns |
+
 Run benchmarks on your hardware:
 
 ```bash
@@ -274,17 +280,6 @@ make bench
 # Throughput test (words/sec with colored output)
 make throughput
 ```
-
-Typical performance characteristics:
-
-| Operation | Typical Throughput |
-|-----------|-------------------|
-| Single word tokenization | 100k-300k ops/sec |
-| Sentence (10 words) | 30k-80k ops/sec |
-| Dictionary lookup | 5M-15M ops/sec |
-| Cache hit | 3M-8M ops/sec |
-
-Actual performance depends on your hardware, dictionary size, and word complexity.
 
 ## API Reference
 
@@ -297,10 +292,9 @@ tok, err := tokenizer.NewTokenizer(dictPath string, cfg Config) (*Tokenizer, err
 // Tokenize text
 tokens := tok.Tokenize(text string) []string
 
-// Dictionary management (changes take effect immediately)
-tok.AddWord(word string)
-tok.RemoveWord(word string)
-tok.RebuildDictionary() error  // Persist to disk
+// Dictionary management (FST rebuilt immediately, persisted to disk)
+err := tok.AddWord(word string) error
+err := tok.RemoveWord(word string) error
 
 // Cache management
 tok.CacheSize() int

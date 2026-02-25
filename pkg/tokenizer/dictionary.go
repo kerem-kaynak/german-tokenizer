@@ -13,10 +13,9 @@ import (
 // Dictionary holds German compound word components in an FST for fast lookups.
 type Dictionary struct {
 	fst     *vellum.FST
-	words   map[string]struct{}
+	words   map[string]struct{} // Source of truth for modifications
 	fstPath string
 	txtPath string
-	dirty   bool
 	mu      sync.RWMutex
 }
 
@@ -68,55 +67,52 @@ func (d *Dictionary) loadOrBuildFST() error {
 		return nil
 	}
 
-	return d.RebuildFST()
+	return d.rebuildFSTInternal()
 }
 
 // Contains checks if a word exists in the dictionary (case-insensitive).
-// This is the hot path - optimized for speed.
+// Always uses FST for lookups.
 func (d *Dictionary) Contains(word string) bool {
 	lower := strings.ToLower(word)
 
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
-	if d.dirty {
-		_, ok := d.words[lower]
-		return ok
-	}
-
 	_, exists, _ := d.fst.Get([]byte(lower))
 	return exists
 }
 
-// AddWord adds a word to the dictionary.
-// Marks as dirty - call RebuildFST() to persist.
-func (d *Dictionary) AddWord(word string) {
+// AddWord adds a word to the dictionary and rebuilds FST.
+func (d *Dictionary) AddWord(word string) error {
 	lower := strings.ToLower(word)
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	d.words[lower] = struct{}{}
-	d.dirty = true
+	return d.rebuildFSTInternal()
 }
 
-// RemoveWord removes a word from the dictionary.
-// Marks as dirty - call RebuildFST() to persist.
-func (d *Dictionary) RemoveWord(word string) {
+// RemoveWord removes a word from the dictionary and rebuilds FST.
+func (d *Dictionary) RemoveWord(word string) error {
 	lower := strings.ToLower(word)
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	delete(d.words, lower)
-	d.dirty = true
+	return d.rebuildFSTInternal()
 }
 
 // RebuildFST rebuilds the FST from the current word set and saves to disk.
 func (d *Dictionary) RebuildFST() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	return d.rebuildFSTInternal()
+}
 
+// rebuildFSTInternal rebuilds FST without locking (caller must hold lock).
+func (d *Dictionary) rebuildFSTInternal() error {
 	if d.fst != nil {
 		d.fst.Close()
 		d.fst = nil
@@ -159,7 +155,6 @@ func (d *Dictionary) RebuildFST() error {
 		return err
 	}
 	d.fst = fst
-	d.dirty = false
 
 	return d.saveTextFile()
 }
@@ -197,13 +192,6 @@ func (d *Dictionary) Close() error {
 		return err
 	}
 	return nil
-}
-
-// IsDirty returns true if there are unsaved changes.
-func (d *Dictionary) IsDirty() bool {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.dirty
 }
 
 // WordCount returns the number of words in the dictionary.
