@@ -26,7 +26,7 @@ func getTestDictPath() string {
 
 func TestTokenizer_Tokenize(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath)
+	tok, err := NewTokenizer(dictPath, DefaultConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 	}{
 		{
 			input:    "Wärmedämmung",
-			contains: []string{"wärmedämmung"},  // Original preserved, segments are normalized
+			contains: []string{"wärmedämmung"}, // Original preserved, segments are normalized
 		},
 		{
 			input:    "Brandschutzkonzept",
@@ -46,7 +46,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 		},
 		{
 			input:    "Stahlbetondecke",
-			contains: []string{"stahlbetondecke", "stahl", "beton"},  // decke might be stemmed
+			contains: []string{"stahlbetondecke", "stahl", "beton"}, // decke might be stemmed
 		},
 		{
 			input:    "Größe",
@@ -75,7 +75,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 
 func TestTokenizer_Deduplication(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath)
+	tok, err := NewTokenizer(dictPath, DefaultConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestTokenizer_Deduplication(t *testing.T) {
 
 func TestTokenizer_MultipleWords(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath)
+	tok, err := NewTokenizer(dictPath, DefaultConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -124,13 +124,21 @@ func TestTokenizer_MultipleWords(t *testing.T) {
 func TestTokenizer_WithCustomNormalizer(t *testing.T) {
 	dictPath := getTestDictPath()
 
-	// Create tokenizer with custom normalizer steps (without stemming)
-	tok, err := NewTokenizer(dictPath, WithNormalizerSteps(
-		NFKDDecompose,
-		Lowercase,
-		ConvertEszett,
-		RemoveCombiningMarks,
-	))
+	// Create tokenizer with custom normalizer config (without stemming)
+	tok, err := NewTokenizer(dictPath, Config{
+		Cache:             true,
+		LowercaseOriginal: true,
+		Normalizers: NormalizerConfig{
+			NFKDDecompose:        true,
+			RemoveControlChars:   false,
+			Lowercase:            true,
+			NormalizeQuotes:      false,
+			ExpandLigatures:      false,
+			ConvertEszett:        true,
+			RemoveCombiningMarks: true,
+			StemGerman:           false, // No stemming
+		},
+	})
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -152,7 +160,11 @@ func TestTokenizer_WithCustomNormalizer(t *testing.T) {
 func TestTokenizer_WithoutLowercaseOriginal(t *testing.T) {
 	dictPath := getTestDictPath()
 
-	tok, err := NewTokenizer(dictPath, WithLowercaseOriginal(false))
+	tok, err := NewTokenizer(dictPath, Config{
+		Cache:             true,
+		LowercaseOriginal: false,
+		Normalizers:       DefaultNormalizerConfig(),
+	})
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -168,7 +180,7 @@ func TestTokenizer_WithoutLowercaseOriginal(t *testing.T) {
 	}
 
 	if resultSet["brandschutzkonzept"] {
-		t.Errorf("Expected 'brandschutzkonzept' to NOT be in result with WithLowercaseOriginal(false), got %v", result)
+		t.Errorf("Expected 'brandschutzkonzept' to NOT be in result with LowercaseOriginal=false, got %v", result)
 	}
 
 	// Should still have segments
@@ -180,7 +192,11 @@ func TestTokenizer_WithoutLowercaseOriginal(t *testing.T) {
 func TestTokenizer_WithoutCache(t *testing.T) {
 	dictPath := getTestDictPath()
 
-	tok, err := NewTokenizer(dictPath, WithCache(false))
+	tok, err := NewTokenizer(dictPath, Config{
+		Cache:             false,
+		LowercaseOriginal: true,
+		Normalizers:       DefaultNormalizerConfig(),
+	})
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -204,7 +220,7 @@ func TestTokenizer_WithoutCache(t *testing.T) {
 
 func TestTokenizer_DictionaryWordCount(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath)
+	tok, err := NewTokenizer(dictPath, DefaultConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}

@@ -6,7 +6,7 @@ import (
 
 func BenchmarkTokenize_SingleWord(b *testing.B) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath)
+	tok, err := NewTokenizer(dictPath, DefaultConfig())
 	if err != nil {
 		b.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -20,7 +20,7 @@ func BenchmarkTokenize_SingleWord(b *testing.B) {
 
 func BenchmarkTokenize_LongCompound(b *testing.B) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath)
+	tok, err := NewTokenizer(dictPath, DefaultConfig())
 	if err != nil {
 		b.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -34,7 +34,7 @@ func BenchmarkTokenize_LongCompound(b *testing.B) {
 
 func BenchmarkTokenize_Sentence(b *testing.B) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath)
+	tok, err := NewTokenizer(dictPath, DefaultConfig())
 	if err != nil {
 		b.Fatalf("Failed to create tokenizer: %v", err)
 	}
