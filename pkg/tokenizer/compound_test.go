@@ -100,7 +100,7 @@ func TestNormalizeUmlauts(t *testing.T) {
 		{"größe", "grosse"},
 		{"über", "uber"},
 		{"haus", "haus"},
-		{"äöüß", "aouss"},  // ä→a, ö→o, ü→u, ß→ss = aouss
+		{"äöüß", "aouss"}, // ä→a, ö→o, ü→u, ß→ss = aouss
 	}
 
 	for _, tt := range tests {

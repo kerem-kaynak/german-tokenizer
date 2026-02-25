@@ -25,7 +25,7 @@ func TestSplitWords(t *testing.T) {
 			},
 		},
 		{
-			input: "",
+			input:    "",
 			expected: []RawToken{},
 		},
 		{

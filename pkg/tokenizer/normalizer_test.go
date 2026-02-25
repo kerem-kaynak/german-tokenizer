@@ -102,7 +102,7 @@ func TestConvertEszett(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"Größe", "Grösse"},   // ConvertEszett only converts ß, not ö
+		{"Größe", "Grösse"}, // ConvertEszett only converts ß, not ö
 		{"Straße", "Strasse"},
 		{"groß", "gross"},
 		{"Fuß", "Fuss"},
@@ -122,9 +122,9 @@ func TestRemoveCombiningMarks(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"a\u0308", "a"},  // ä decomposed
-		{"o\u0308", "o"},  // ö decomposed
-		{"u\u0308", "u"},  // ü decomposed
+		{"a\u0308", "a"}, // ä decomposed
+		{"o\u0308", "o"}, // ö decomposed
+		{"u\u0308", "u"}, // ü decomposed
 		{"normal", "normal"},
 	}
 
@@ -206,7 +206,7 @@ func TestNewNormalizerWithSteps(t *testing.T) {
 	n := NewNormalizerWithSteps(Lowercase, ConvertEszett)
 
 	result := n.Normalize("Größe")
-	expected := "grösse"  // ö preserved, ß → ss
+	expected := "grösse" // ö preserved, ß → ss
 	if result != expected {
 		t.Errorf("Custom Normalize(%q) = %q, want %q", "Größe", result, expected)
 	}

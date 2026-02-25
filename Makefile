@@ -1,19 +1,33 @@
-.PHONY: build test bench throughput clean run demo help dict-stats dict-contains dict-add dict-remove
+.PHONY: all build test bench throughput clean run demo help dict-stats dict-contains dict-add dict-remove deps fmt lint check cover install ci
 
 # Default compound word components dictionary
 COMPONENTS := dictionaries/german_compound_word_components.txt
 
+all: build test
+
 help:
 	@echo "German Tokenizer - Available Commands"
 	@echo ""
-	@echo "  make build       Build all binaries"
-	@echo "  make test        Run unit tests"
-	@echo "  make bench       Run Go micro-benchmarks (per-function timing)"
-	@echo "  make throughput  Run throughput test (words/sec on test corpus)"
-	@echo "  make demo        Run interactive tokenizer demo"
+	@echo "Build & Run:"
+	@echo "  make build       Build all binaries to ./bin/"
+	@echo "  make install     Install binaries to GOPATH/bin"
 	@echo "  make clean       Remove binaries and generated files"
+	@echo "  make run TEXT=\"your text\"   Tokenize text"
+	@echo "  make demo        Run interactive tokenizer demo"
 	@echo ""
-	@echo "  make run TEXT=\"your text\"           Tokenize text"
+	@echo "Testing & Quality:"
+	@echo "  make test        Run unit tests"
+	@echo "  make bench       Run Go micro-benchmarks"
+	@echo "  make throughput  Run throughput test (words/sec)"
+	@echo "  make cover       Run tests with coverage report"
+	@echo "  make check       Run all checks (fmt, lint, test)"
+	@echo "  make ci          Run CI pipeline locally"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make fmt         Format code"
+	@echo "  make lint        Run go vet"
+	@echo "  make check-fmt   Check if code is formatted"
+	@echo "  make deps        Install/update dependencies"
 	@echo ""
 	@echo "Dictionary Management:"
 	@echo "  make dict-stats                     Show dictionary statistics"
@@ -77,3 +91,26 @@ fmt:
 # Lint code
 lint:
 	@go vet ./...
+
+# Check formatting (fails if not formatted)
+check-fmt:
+	@test -z "$$(gofmt -l .)" || (echo "Code is not formatted. Run 'make fmt'" && gofmt -d . && exit 1)
+
+# Run all checks (same as CI)
+check: check-fmt lint test
+
+# Run tests with coverage
+cover:
+	@go test -coverprofile=coverage.out ./pkg/tokenizer/...
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report: coverage.html"
+
+# Install binaries to GOPATH/bin
+install:
+	@go install ./cmd/tokenize
+	@go install ./cmd/dictmgr
+	@go install ./cmd/throughput
+	@echo "Installed to $(shell go env GOPATH)/bin"
+
+# CI pipeline (what runs in GitHub Actions)
+ci: check-fmt lint test
