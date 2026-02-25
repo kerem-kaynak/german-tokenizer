@@ -1,0 +1,373 @@
+# German Construction Domain Benchmark Test Suite
+# Format: input<TAB>expected_segment1<TAB>expected_segment2<TAB>...
+# Lines starting with # are comments
+
+# === Building Materials (50) ===
+Wärmedämmung	wärme	dämmung
+Stahlbeton	stahl	beton
+Ziegelmauerwerk	ziegel	mauer	werk
+Holzbalken	holz	balken
+Betonfertigteil	beton	fertig	teil
+Glasfaser	glas	faser
+Kunststoff	kunst	stoff
+Naturstein	natur	stein
+Kalkstein	kite	stein
+Sandstein	sand	stein
+Backsteinmauer	back	stein	mauer
+Dachziegel	dach	ziegel
+Fassadenplatte	fassaden	platte
+Wandverkleidung	wand	verkleidung
+Bodenbelag	boden	belag
+Teppichboden	teppich	boden
+Parkettboden	parkett	boden
+Fliesenbelag	fliesen	belag
+Putzschicht	putz	schicht
+Estrichboden	estrich	boden
+Dämmstoff	dämm	stoff
+Mineralwolle	mineral	wolle
+Glaswolle	glas	wolle
+Steinwolle	stein	wolle
+Hartschaum	hart	schaum
+Schaumstoff	schaum	stoff
+Sperrholz	sperr	holz
+Spanplatte	span	platte
+Faserzement	faser	zement
+Gipskarton	gips	karton
+Gipsplatte	gips	platte
+Trockenbau	trocken	bau
+Leichtbeton	leicht	beton
+Schwerbeton	schwer	beton
+Bewehrungsstahl	bewehrungs	stahl
+Baustahl	bau	stahl
+Edelstahl	edel	stahl
+Aluminium	aluminium
+Kupferrohr	kupfer	rohr
+Bleiblende	blei	blende
+Fensterrahmen	fenster	rahmen
+Türblatt	tür	blatt
+Dichtungsmasse	dichtungs	masse
+Silikon	silikon
+Acryl	acryl
+Epoxidharz	epoxid	harz
+Polyurethan	polyurethan
+Bitumen	bitumen
+Teerpappe	teer	pappe
+Dachpappe	dach	pappe
+
+# === Structural Elements (50) ===
+Dachkonstruktion	dach	konstruktion
+Fundamentplatte	fundament	platte
+Tragwerk	trag	werk
+Geschossdecke	geschoss	decke
+Stützpfeiler	stütz	pfeiler
+Außenwand	außen	wand
+Innenwand	innen	wand
+Trennwand	trenn	wand
+Brandwand	brand	wand
+Feuerwand	feuer	wand
+Kellerwand	keller	wand
+Kellerboden	keller	boden
+Kellerdecke	keller	decke
+Dachboden	dach	boden
+Dachstuhl	dach	stuhl
+Dachbalken	dach	balken
+Dachsparren	dach	sparren
+Dachfirst	dach	first
+Dachtraufe	dach	traufe
+Dachrinne	dach	rinne
+Fallrohr	fall	rohr
+Regenrinne	regen	rinne
+Fensterbrett	fenster	brett
+Türschwelle	tür	schwelle
+Treppenstufe	treppen	stufe
+Treppengeländer	treppen	geländer
+Handlauf	hand	lauf
+Brüstung	brüstung
+Geländer	geländer
+Balkon	balkon
+Terrasse	terrasse
+Veranda	veranda
+Wintergarten	winter	garten
+Carport	carport
+Garage	garage
+Pergola	pergola
+Vordach	vor	dach
+Eingang	eingang
+Hauseingang	haus	eingang
+Haupteingang	haupt	eingang
+Hintereingang	hinter	eingang
+Nebeneingang	neben	eingang
+Notausgang	not	ausgang
+Fluchtweg	flucht	weg
+Fluchttür	flucht	tür
+Feuertür	feuer	tür
+Brandschutztür	brand	schutz	tür
+Rauchschutztür	rauch	schutz	tür
+Sicherheitstür	sicherheits	tür
+Eingangstür	eingangs	tür
+
+# === Technical Drawings (40) ===
+Grundrisszeichnung	grundriss	zeichnung
+Schnittdarstellung	schnitt	darstellung
+Detailplan	detail	plan
+Maßstabsangabe	maßstabs	angabe
+Bauzeichnung	bau	zeichnung
+Werkplanung	werk	planung
+Ausführungsplan	ausführungs	plan
+Entwurfsplan	entwurfs	plan
+Genehmigungsplan	genehmigungs	plan
+Lageplan	lage	plan
+Flächenplan	flächen	plan
+Raumplan	raum	plan
+Möbelplan	möbel	plan
+Beleuchtungsplan	beleuchtungs	plan
+Elektroplan	elektro	plan
+Sanitärplan	sanitär	plan
+Heizungsplan	heizungs	plan
+Lüftungsplan	lüftungs	plan
+Entwässerungsplan	entwässerungs	plan
+Bewässerungsplan	bewässerungs	plan
+Außenanlagenplan	außen	anlagen	plan
+Grünanlagenplan	grün	anlagen	plan
+Parkplatzplan	park	platz	plan
+Stellplatzplan	stell	platz	plan
+Tiefgaragenplan	tief	garagen	plan
+Fassadenplan	fassaden	plan
+Dachabwicklung	dach	abwicklung
+Dachaufsicht	dach	aufsicht
+Dachdraufsicht	dach	draufsicht
+Ansichtszeichnung	ansichts	zeichnung
+Nordansicht	nord	ansicht
+Südansicht	süd	ansicht
+Ostansicht	ost	ansicht
+Westansicht	west	ansicht
+Seitenansicht	seiten	ansicht
+Frontansicht	front	ansicht
+Rückansicht	rück	ansicht
+Längsschnitt	längs	schnitt
+Querschnitt	quer	schnitt
+Horizontalschnitt	horizontal	schnitt
+
+# === Construction Processes (40) ===
+Bauausführung	bau	ausführung
+Rohbauarbeiten	roh	bau	arbeiten
+Innenausbau	innen	ausbau
+Abbrucharbeiten	abbruch	arbeiten
+Erdarbeiten	erd	arbeiten
+Aushubarbeiten	aushub	arbeiten
+Betonarbeiten	beton	arbeiten
+Maurerarbeiten	maurer	arbeiten
+Zimmererarbeiten	zimmerer	arbeiten
+Dachdeckerarbeiten	dach	decker	arbeiten
+Klempnerarbeiten	klempner	arbeiten
+Malerarbeiten	maler	arbeiten
+Tapezierarbeiten	tapezier	arbeiten
+Fliesenarbeiten	fliesen	arbeiten
+Estricharbeiten	estrich	arbeiten
+Trockenbauarbeiten	trocken	bau	arbeiten
+Putzarbeiten	putz	arbeiten
+Elektroarbeiten	elektro	arbeiten
+Sanitärarbeiten	sanitär	arbeiten
+Heizungsarbeiten	heizungs	arbeiten
+Lüftungsarbeiten	lüftungs	arbeiten
+Klimaarbeiten	klima	arbeiten
+Aufzugsarbeiten	aufzugs	arbeiten
+Schlosserarbeiten	schlosser	arbeiten
+Glaserarbeiten	glaser	arbeiten
+Tischlerarbeiten	tischler	arbeiten
+Parkettarbeiten	parkett	arbeiten
+Bodenbelagsarbeiten	boden	belags	arbeiten
+Außenanlagenarbeiten	außen	anlagen	arbeiten
+Landschaftsbauarbeiten	landschafts	bau	arbeiten
+Pflasterarbeiten	pflaster	arbeiten
+Asphaltierarbeiten	asphaltier	arbeiten
+Abdichtungsarbeiten	abdichtungs	arbeiten
+Dämmarbeiten	dämm	arbeiten
+Gerüstbauarbeiten	gerüst	bau	arbeiten
+Abrisarbeiten	abris	arbeiten
+Rückbauarbeiten	rück	bau	arbeiten
+Sanierungsarbeiten	sanierungs	arbeiten
+Renovierungsarbeiten	renovierungs	arbeiten
+Modernisierungsarbeiten	modernisierungs	arbeiten
+
+# === Safety and Regulations (30) ===
+Brandschutzkonzept	brand	schutz	konzept
+Bauvorschriften	bau	vorschriften
+Schallschutznachweis	schall	schutz	nachweis
+Wärmeschutznachweis	wärme	schutz	nachweis
+Standsicherheitsnachweis	stand	sicherheits	nachweis
+Brandschutznachweis	brand	schutz	nachweis
+Energieausweis	energie	ausweis
+Baugenehmigung	bau	genehmigung
+Bauantrag	bau	antrag
+Bauanzeige	bau	anzeige
+Bauabnahme	bau	abnahme
+Bauaufsicht	bau	aufsicht
+Baukontrolle	bau	kontrolle
+Bauüberwachung	bau	überwachung
+Bauleitung	bau	leitung
+Sicherheitskonzept	sicherheits	konzept
+Arbeitsschutz	arbeits	schutz
+Unfallverhütung	unfall	verhütung
+Gefahrenanalyse	gefahren	analyse
+Risikobeurteilung	risiko	beurteilung
+Notfallplan	notfall	plan
+Evakuierungsplan	evakuierungs	plan
+Feuerwehrplan	feuerwehr	plan
+Rettungsweg	rettungs	weg
+Fluchtwegeplan	flucht	wege	plan
+Rauchmelder	rauch	melder
+Brandmelder	brand	melder
+Feuermelder	feuer	melder
+Sprinkleranlage	sprinkler	anlage
+Löschanlage	lösch	anlage
+
+# === Installations / MEP (30) ===
+Elektroinstallation	elektro	installation
+Sanitäranlagen	sanitär	anlagen
+Lüftungstechnik	lüftungs	technik
+Heizungsanlage	heizungs	anlage
+Klimaanlage	klima	anlage
+Warmwasseranlage	warm	wasser	anlage
+Kaltwasserleitung	kalt	wasser	leitung
+Abwasserleitung	ab	wasser	leitung
+Gasleitung	gas	leitung
+Stromleitung	strom	leitung
+Kabelkanal	kabel	kanal
+Lüftungskanal	lüftungs	kanal
+Abluftkanal	ab	luft	kanal
+Zuluftkanal	zu	luft	kanal
+Rohrleitung	rohr	leitung
+Rohrdurchführung	rohr	durchführung
+Steckdose	steck	dose
+Lichtschalter	licht	schalter
+Sicherungskasten	sicherungs	kasten
+Verteilerkasten	verteiler	kasten
+Zählerkasten	zähler	kasten
+Heizkörper	heiz	körper
+Fußbodenheizung	fuß	boden	heizung
+Wandheizung	wand	heizung
+Deckenheizung	decken	heizung
+Thermostat	thermostat
+Regelung	regelung
+Steuerung	steuerung
+Wärmepumpe	wärme	pumpe
+Solaranlage	solar	anlage
+
+# === Long Compound Chains (30) ===
+Wärmedämmverbundsystem	wärme	dämm	verbund	system
+Stahlbetonfertigteildecke	stahl	beton	fertig	teil	decke
+Brandschutzanforderungen	brand	schutz	anforderungen
+Trinkwasserinstallation	trink	wasser	installation
+Abwasserentsorgung	ab	wasser	entsorgung
+Regenwassernutzung	regen	wasser	nutzung
+Niederschlagswasser	nieder	schlags	wasser
+Oberflächenwasser	ober	flächen	wasser
+Grundwasserspiegel	grund	wasser	spiegel
+Baugrunduntersuchung	bau	grund	untersuchung
+Tragfähigkeitsnachweis	trag	fähigkeits	nachweis
+Standsicherheitsberechnung	stand	sicherheits	berechnung
+Schallschutzanforderungen	schall	schutz	anforderungen
+Wärmeschutzberechnung	wärme	schutz	berechnung
+Energieeinsparverordnung	energie	einspar	verordnung
+Gebäudeenergiegesetz	gebäude	energie	gesetz
+Landesbauordnung	landes	bau	ordnung
+Bauordnungsrecht	bau	ordnungs	recht
+Nachbarschaftsrecht	nachbarschafts	recht
+Grundstücksgrenze	grundstücks	grenze
+Baulinienverlauf	bau	linien	verlauf
+Baugrenzüberschreitung	bau	grenz	überschreitung
+Abstandsflächenberechnung	abstands	flächen	berechnung
+Geschossflächenzahl	geschoss	flächen	zahl
+Grundflächenzahl	grund	flächen	zahl
+Baumassenzahl	bau	massen	zahl
+Bebauungsplanänderung	bebauungs	plan	änderung
+Flächennutzungsplan	flächen	nutzungs	plan
+Raumordnungsplan	raum	ordnungs	plan
+Verkehrsentwicklungsplan	verkehrs	entwicklungs	plan
+
+# === Umlaut and ß Words (30) ===
+Wärmebrücke	wärme	brücke
+Außenwandverkleidung	außen	wand	verkleidung
+Gebäudehülle	gebäude	hülle
+Wärmedurchgang	wärme	durchgang
+Wärmeleitfähigkeit	wärme	leit	fähigkeit
+Außendämmung	außen	dämmung
+Innendämmung	innen	dämmung
+Kerndämmung	kern	dämmung
+Perimeterdämmung	perimeter	dämmung
+Schalldämmung	schall	dämmung
+Trittschalldämmung	tritt	schall	dämmung
+Luftschalldämmung	luft	schall	dämmung
+Körperschalldämmung	körper	schall	dämmung
+Wärmedämmwert	wärme	dämm	wert
+Dämmungsdicke	dämmungs	dicke
+Außentemperatur	außen	temperatur
+Raumtemperatur	raum	temperatur
+Oberflächentemperatur	ober	flächen	temperatur
+Fußbodentemperatur	fuß	boden	temperatur
+Größenordnung	größen	ordnung
+Höhenlage	höhen	lage
+Längenausdehnung	längen	ausdehnung
+Flächenmaß	flächen	maß
+Raumgröße	raum	größe
+Türöffnung	tür	öffnung
+Fensteröffnung	fenster	öffnung
+Lüftungsöffnung	lüftungs	öffnung
+Zugangsöffnung	zugangs	öffnung
+Prüföffnung	prüf	öffnung
+Revisionsöffnung	revisions	öffnung
+
+# === Non-splittable Words (30) ===
+Beton	beton
+Estrich	estrich
+Putz	putz
+Ziegel	ziegel
+Stahl	stahl
+Holz	holz
+Glas	glas
+Stein	stein
+Sand	sand
+Kies	kies
+Mörtel	mörtel
+Zement	zement
+Gips	gips
+Kalk	kalk
+Lehm	lehm
+Ton	ton
+Acryl	acryl
+Silikon	silikon
+Bitumen	bitumen
+Teer	teer
+Filz	filz
+Vlies	vlies
+Folie	folie
+Netz	netz
+Draht	draht
+Rohr	rohr
+Dübel	dübel
+Nagel	nagel
+Schraube	schraube
+Bolzen	bolzen
+
+# === Domain Abbreviations (20) ===
+DIN	din
+VOB	vob
+EnEV	enev
+BauO	bauo
+HOAI	hoai
+BGB	bgb
+ArbStättV	arbstättv
+ASR	asr
+BetrSichV	betrsichv
+GefStoffV	gefstoffv
+BauPG	baupg
+BauNVO	baunvo
+BauGB	baugb
+LBO	lbo
+HBO	hbo
+MBO	mbo
+VDI	vdi
+VDE	vde
+DVGW	dvgw
+DGUV	dguv
