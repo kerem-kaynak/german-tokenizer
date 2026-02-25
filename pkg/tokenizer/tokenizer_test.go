@@ -24,28 +24,27 @@ func getTestDictPath() string {
 	return filepath.Join(wd, "../../dictionaries/german_compound_word_components.txt")
 }
 
-// allNormalizersEnabled returns a NormalizerConfig with all normalizers enabled.
-// Used in tests for convenience.
-func allNormalizersEnabled() NormalizerConfig {
-	return NormalizerConfig{
-		NFKDDecompose:        true,
-		RemoveControlChars:   true,
-		Lowercase:            true,
-		NormalizeQuotes:      true,
-		ExpandLigatures:      true,
-		ConvertEszett:        true,
-		RemoveCombiningMarks: true,
-		StemGerman:           true,
+// testConfig returns a Config with all features enabled for tests.
+func testConfig() Config {
+	return Config{
+		Cache:             true,
+		LowercaseOriginal: true,
+		Normalizers: NormalizerConfig{
+			NFKDDecompose:        true,
+			RemoveControlChars:   true,
+			Lowercase:            true,
+			NormalizeQuotes:      true,
+			ExpandLigatures:      true,
+			ConvertEszett:        true,
+			RemoveCombiningMarks: true,
+			StemGerman:           true,
+		},
 	}
 }
 
 func TestTokenizer_Tokenize(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath, Config{
-		Cache:             true,
-		LowercaseOriginal: true,
-		Normalizers:       allNormalizersEnabled(),
-	})
+	tok, err := NewTokenizer(dictPath, testConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -94,11 +93,7 @@ func TestTokenizer_Tokenize(t *testing.T) {
 
 func TestTokenizer_Deduplication(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath, Config{
-		Cache:             true,
-		LowercaseOriginal: true,
-		Normalizers:       allNormalizersEnabled(),
-	})
+	tok, err := NewTokenizer(dictPath, testConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -122,11 +117,7 @@ func TestTokenizer_Deduplication(t *testing.T) {
 
 func TestTokenizer_MultipleWords(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath, Config{
-		Cache:             true,
-		LowercaseOriginal: true,
-		Normalizers:       allNormalizersEnabled(),
-	})
+	tok, err := NewTokenizer(dictPath, testConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -187,11 +178,10 @@ func TestTokenizer_WithCustomNormalizer(t *testing.T) {
 func TestTokenizer_WithoutLowercaseOriginal(t *testing.T) {
 	dictPath := getTestDictPath()
 
-	tok, err := NewTokenizer(dictPath, Config{
-		Cache:             true,
-		LowercaseOriginal: false,
-		Normalizers:       allNormalizersEnabled(),
-	})
+	cfg := testConfig()
+	cfg.LowercaseOriginal = false
+
+	tok, err := NewTokenizer(dictPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -219,11 +209,10 @@ func TestTokenizer_WithoutLowercaseOriginal(t *testing.T) {
 func TestTokenizer_WithoutCache(t *testing.T) {
 	dictPath := getTestDictPath()
 
-	tok, err := NewTokenizer(dictPath, Config{
-		Cache:             false,
-		LowercaseOriginal: true,
-		Normalizers:       allNormalizersEnabled(),
-	})
+	cfg := testConfig()
+	cfg.Cache = false
+
+	tok, err := NewTokenizer(dictPath, cfg)
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
@@ -247,11 +236,7 @@ func TestTokenizer_WithoutCache(t *testing.T) {
 
 func TestTokenizer_DictionaryWordCount(t *testing.T) {
 	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath, Config{
-		Cache:             true,
-		LowercaseOriginal: true,
-		Normalizers:       allNormalizersEnabled(),
-	})
+	tok, err := NewTokenizer(dictPath, testConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
