@@ -9,6 +9,7 @@ A high-performance German text tokenizer for search and NLP applications. Specia
 - **Configurable normalization pipeline**: NFKD decomposition, lowercase, ß→ss conversion, German stemming, and more
 - **LRU cache**: 100k entry cache for compound splits (~10MB memory)
 - **Dual output**: Emits both original tokens (with umlauts preserved) and normalized/stemmed tokens
+- **Runtime dictionary updates**: Add or remove words without restarting
 
 ## Installation
 
@@ -54,9 +55,26 @@ func main() {
 
 ## Dictionary
 
-The tokenizer requires a dictionary of German compound word components. A dictionary with 15,615 words is included at `dictionaries/german_compound_word_components.txt`, sourced from [Meilisearch's charabia](https://github.com/meilisearch/charabia).
+The tokenizer requires a dictionary of German compound word components. A dictionary with 15,615 words is included at `dictionaries/german_compound_word_components.txt`.
 
 You can also use your own dictionary - one word per line, lowercase.
+
+### Runtime Dictionary Updates
+
+Words can be added or removed at runtime without restarting:
+
+```go
+// Add a word - immediately available for lookups
+tok.AddWord("neueswort")
+
+// Remove a word - immediately takes effect
+tok.RemoveWord("alteswort")
+
+// Persist changes to disk (optional)
+tok.RebuildDictionary()
+```
+
+When you call `AddWord()` or `RemoveWord()`, the dictionary is marked as dirty and subsequent lookups use the in-memory map. Call `RebuildDictionary()` to persist changes to disk and rebuild the FST.
 
 ## Configuration
 
@@ -207,38 +225,39 @@ Compound splits are cached using an LRU cache (100k entries, ~10MB):
 
 ## CLI Tools
 
-### tokenize
-
-Interactive tokenizer for testing:
+### Tokenize
 
 ```bash
-# Build
+# Build all binaries
 make build
 
-# Single input
-./bin/tokenize dictionaries/german_compound_word_components.txt "Brandschutzkonzept"
+# Tokenize a single input
+make run TEXT="Brandschutzkonzept"
 # Output: ["brandschutzkonzept","brand","schutz","konzept"]
 
 # Interactive mode
-./bin/tokenize dictionaries/german_compound_word_components.txt
+make demo
 > Wärmedämmung
   ["wärmedämmung","warm","dammung"]
 ```
 
-### dictmgr
-
-Dictionary management:
+### Dictionary Management
 
 ```bash
+# Show dictionary statistics
 ./bin/dictmgr dictionaries/german_compound_word_components.txt stats
+
+# Check if a word exists
 ./bin/dictmgr dictionaries/german_compound_word_components.txt contains haus
+
+# Add a word
 ./bin/dictmgr dictionaries/german_compound_word_components.txt add neueswort
+
+# Remove a word
 ./bin/dictmgr dictionaries/german_compound_word_components.txt remove alteswort
 ```
 
-### throughput
-
-Performance benchmarking:
+### Throughput Benchmarking
 
 ```bash
 make throughput
@@ -246,24 +265,26 @@ make throughput
 
 ## Performance
 
-Benchmarks on Apple M1:
-
-| Operation | Throughput | Latency |
-|-----------|------------|---------|
-| Single word tokenization | ~200k ops/sec | ~5μs |
-| Sentence (10 words) | ~50k ops/sec | ~20μs |
-| Dictionary lookup | ~10M ops/sec | ~100ns |
-| Cache hit | ~5M ops/sec | ~200ns |
-
-Run benchmarks:
+Run benchmarks on your hardware:
 
 ```bash
-# Go micro-benchmarks
+# Go micro-benchmarks (per-function timing)
 make bench
 
-# Throughput test
+# Throughput test (words/sec with colored output)
 make throughput
 ```
+
+Typical performance characteristics:
+
+| Operation | Typical Throughput |
+|-----------|-------------------|
+| Single word tokenization | 100k-300k ops/sec |
+| Sentence (10 words) | 30k-80k ops/sec |
+| Dictionary lookup | 5M-15M ops/sec |
+| Cache hit | 3M-8M ops/sec |
+
+Actual performance depends on your hardware, dictionary size, and word complexity.
 
 ## API Reference
 
@@ -276,10 +297,10 @@ tok, err := tokenizer.NewTokenizer(dictPath string, cfg Config) (*Tokenizer, err
 // Tokenize text
 tokens := tok.Tokenize(text string) []string
 
-// Dictionary management
+// Dictionary management (changes take effect immediately)
 tok.AddWord(word string)
 tok.RemoveWord(word string)
-tok.RebuildDictionary() error
+tok.RebuildDictionary() error  // Persist to disk
 
 // Cache management
 tok.CacheSize() int
@@ -335,8 +356,11 @@ tokenizer.StemGerman(s string) string
 # Run tests
 make test
 
-# Run benchmarks
+# Run micro-benchmarks
 make bench
+
+# Run throughput test
+make throughput
 
 # Build binaries
 make build
