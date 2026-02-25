@@ -55,7 +55,9 @@ func main() {
 
 ## Dictionary
 
-The tokenizer requires a dictionary of German compound word components. A dictionary with 15,615 words is included at `dictionaries/german_compound_word_components.txt`.
+The tokenizer requires a dictionary of German compound word components. A dictionary with ~15,000 words is included at `dictionaries/german_compound_word_components.txt`.
+
+**Dictionary source**: The included dictionary is derived from [uschindler/german-decompounder](https://github.com/uschindler/german-decompounder), which was created based on [Björn Jacke's igerman98](https://www.j3e.de/ispell/igerman98/) dictionary. The dictionary contains component parts commonly used to form German compound words (not the compounds themselves).
 
 You can also use your own dictionary - one word per line, lowercase.
 
