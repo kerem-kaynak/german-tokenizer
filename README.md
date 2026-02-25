@@ -55,7 +55,7 @@ func main() {
 
 ## Dictionary
 
-The tokenizer requires a dictionary of German compound word components. A dictionary with 15,615 words is included at `dictionaries/german_compound_word_components.txt`, derived from the open-source [Hunspell German dictionary](https://github.com/wooorm/dictionaries/tree/main/dictionaries/de).
+The tokenizer requires a dictionary of German compound word components. A dictionary with 15,615 words is included at `dictionaries/german_compound_word_components.txt`.
 
 You can also use your own dictionary - one word per line, lowercase.
 

@@ -67,7 +67,7 @@ func (d *Dictionary) loadOrBuildFST() error {
 		return nil
 	}
 
-	return d.rebuildFSTInternal()
+	return d.rebuildFST()
 }
 
 // Contains checks if a word exists in the dictionary (case-insensitive).
@@ -90,7 +90,7 @@ func (d *Dictionary) AddWord(word string) error {
 	defer d.mu.Unlock()
 
 	d.words[lower] = struct{}{}
-	return d.rebuildFSTInternal()
+	return d.rebuildFST()
 }
 
 // RemoveWord removes a word from the dictionary and rebuilds FST.
@@ -101,18 +101,18 @@ func (d *Dictionary) RemoveWord(word string) error {
 	defer d.mu.Unlock()
 
 	delete(d.words, lower)
-	return d.rebuildFSTInternal()
+	return d.rebuildFST()
 }
 
 // RebuildFST rebuilds the FST from the current word set and saves to disk.
 func (d *Dictionary) RebuildFST() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	return d.rebuildFSTInternal()
+	return d.rebuildFST()
 }
 
-// rebuildFSTInternal rebuilds FST without locking (caller must hold lock).
-func (d *Dictionary) rebuildFSTInternal() error {
+// rebuildFST rebuilds FST without locking (caller must hold lock).
+func (d *Dictionary) rebuildFST() error {
 	if d.fst != nil {
 		d.fst.Close()
 		d.fst = nil
