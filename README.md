@@ -2,6 +2,8 @@
 
 A high-performance German text tokenizer for search and NLP applications. Specializes in compound word decomposition, a critical feature for German text processing.
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/kerem-kaynak/german-tokenizer.svg)](https://pkg.go.dev/github.com/kerem-kaynak/german-tokenizer)
+
 ## Features
 
 - **Compound word decomposition**: Splits German compounds into constituent parts (e.g., "Brandschutzkonzept" → ["brand", "schutz", "konzept"])
