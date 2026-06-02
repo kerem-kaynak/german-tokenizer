@@ -3,6 +3,8 @@ package tokenizer
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -231,6 +233,172 @@ func TestTokenizer_WithoutCache(t *testing.T) {
 
 	if !resultSet["brand"] {
 		t.Errorf("Expected 'brand' in result, got %v", result)
+	}
+}
+
+// detailedConfig matches the parity contract (Design A in the search-migration
+// plan): no stemming, full folding. TokenizeDetailed is meant to be used by
+// the HTTP service that ships with this config.
+func detailedConfig() Config {
+	cfg := testConfig()
+	cfg.Normalizers.StemGerman = false
+	return cfg
+}
+
+func TestTokenizer_TokenizeDetailed_Compound(t *testing.T) {
+	tok, err := NewTokenizer(getTestDictPath(), detailedConfig())
+	if err != nil {
+		t.Fatalf("NewTokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	got := tok.TokenizeDetailed("Brandschutzkonzept")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 word, got %d (%v)", len(got), got)
+	}
+	if got[0].Original != "brandschutzkonzept" {
+		t.Errorf("Original = %q, want 'brandschutzkonzept'", got[0].Original)
+	}
+	wantSegs := []string{"brand", "schutz", "konzept"}
+	if !reflect.DeepEqual(got[0].Segments, wantSegs) {
+		t.Errorf("Segments = %v, want %v", got[0].Segments, wantSegs)
+	}
+}
+
+func TestTokenizer_TokenizeDetailed_UmlautPreservedInOriginal(t *testing.T) {
+	tok, err := NewTokenizer(getTestDictPath(), detailedConfig())
+	if err != nil {
+		t.Fatalf("NewTokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	got := tok.TokenizeDetailed("Wärmedämmung")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(got))
+	}
+	if got[0].Original != "wärmedämmung" {
+		t.Errorf("Original = %q, want 'wärmedämmung' (umlauts preserved)", got[0].Original)
+	}
+	// Segments are normalized → umlauts folded.
+	for _, s := range got[0].Segments {
+		if strings.ContainsAny(s, "äöüÄÖÜ") {
+			t.Errorf("Segment %q still contains umlaut; normalization should fold", s)
+		}
+	}
+}
+
+func TestTokenizer_TokenizeDetailed_CompoundRecallTargets(t *testing.T) {
+	// These are the recall targets called out in the PRD:
+	// wand → Außenwand, Brandschutz → Brandschutzkonzept (already covered above).
+	tok, err := NewTokenizer(getTestDictPath(), detailedConfig())
+	if err != nil {
+		t.Fatalf("NewTokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	got := tok.TokenizeDetailed("Außenwand")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(got))
+	}
+	if got[0].Original != "außenwand" {
+		t.Errorf("Original = %q, want 'außenwand'", got[0].Original)
+	}
+	// Segments must contain 'wand' (normalized) so a query for 'wand' recalls this.
+	found := false
+	for _, s := range got[0].Segments {
+		if s == "wand" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Außenwand segments missing 'wand': %v", got[0].Segments)
+	}
+}
+
+func TestTokenizer_TokenizeDetailed_NonCompound(t *testing.T) {
+	tok, err := NewTokenizer(getTestDictPath(), detailedConfig())
+	if err != nil {
+		t.Fatalf("NewTokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	got := tok.TokenizeDetailed("Haus")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 word, got %d", len(got))
+	}
+	if got[0].Original != "haus" {
+		t.Errorf("Original = %q, want 'haus'", got[0].Original)
+	}
+	// Splitter returns [word] when no split applies → Segments has the lone form.
+	if len(got[0].Segments) != 1 || got[0].Segments[0] != "haus" {
+		t.Errorf("Segments = %v, want ['haus']", got[0].Segments)
+	}
+}
+
+func TestTokenizer_TokenizeDetailed_MultiWord(t *testing.T) {
+	tok, err := NewTokenizer(getTestDictPath(), detailedConfig())
+	if err != nil {
+		t.Fatalf("NewTokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	got := tok.TokenizeDetailed("Das Brandschutzkonzept der Außenwand")
+	if len(got) != 4 {
+		t.Fatalf("expected 4 words, got %d (%v)", len(got), got)
+	}
+	wantOriginals := []string{"das", "brandschutzkonzept", "der", "außenwand"}
+	for i, w := range wantOriginals {
+		if got[i].Original != w {
+			t.Errorf("word %d Original = %q, want %q", i, got[i].Original, w)
+		}
+	}
+}
+
+func TestTokenizer_TokenizeDetailed_ConsistentWithTokenize(t *testing.T) {
+	// Invariant: with LowercaseOriginal=true, the in-order union of
+	// Original ++ Segments across all words, globally deduped, equals Tokenize.
+	cfg := detailedConfig()
+	cfg.LowercaseOriginal = true
+	tok, err := NewTokenizer(getTestDictPath(), cfg)
+	if err != nil {
+		t.Fatalf("NewTokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	inputs := []string{
+		"Brandschutzkonzept",
+		"Wärmedämmung",
+		"Außenwand Müllraum",
+		"Das Brandschutzkonzept der Außenwand",
+		"Haus",
+		"Größe",
+	}
+
+	for _, input := range inputs {
+		t.Run(input, func(t *testing.T) {
+			detailed := tok.TokenizeDetailed(input)
+
+			seen := make(map[string]struct{})
+			var rebuilt []string
+			for _, w := range detailed {
+				if _, ok := seen[w.Original]; !ok {
+					seen[w.Original] = struct{}{}
+					rebuilt = append(rebuilt, w.Original)
+				}
+				for _, s := range w.Segments {
+					if _, ok := seen[s]; !ok {
+						seen[s] = struct{}{}
+						rebuilt = append(rebuilt, s)
+					}
+				}
+			}
+
+			tokens := tok.Tokenize(input)
+			if !reflect.DeepEqual(rebuilt, tokens) {
+				t.Errorf("union mismatch for %q:\n  Tokenize     = %v\n  TokenizeDetailed-union = %v",
+					input, tokens, rebuilt)
+			}
+		})
 	}
 }
 

@@ -103,6 +103,59 @@ func NewTokenizer(dictPath string, cfg Config) (*Tokenizer, error) {
 	}, nil
 }
 
+// WordTokens holds the per-word output of TokenizeDetailed.
+//
+// Original is the umlaut-preserved lowercased form of the input word — useful
+// for whole-word ranking and display. Segments are the normalized compound
+// parts — useful for parts-only recall filters. Callers can take whole+parts
+// (e.g. index-side writes) or parts-only (e.g. query-side filters) without
+// re-tokenizing.
+type WordTokens struct {
+	Original string
+	Segments []string
+}
+
+// TokenizeDetailed processes input text and returns one WordTokens per word,
+// in input order. Original is always emitted (independent of the
+// LowercaseOriginal config — the field is structured, the caller decides
+// whether to use it). Segments are deduplicated within each word but not
+// against Original.
+//
+// Consistency with Tokenize: when LowercaseOriginal is true, the in-order
+// union of Original ++ Segments across all words, globally deduped, equals
+// Tokenize(text).
+func (t *Tokenizer) TokenizeDetailed(text string) []WordTokens {
+	rawTokens := SplitWords(text)
+
+	var results []WordTokens
+	for _, raw := range rawTokens {
+		if raw.Type != TokenWord {
+			continue
+		}
+
+		original := t.normalizer.LowercaseOnly(raw.Text)
+
+		segments := t.splitter.Split(raw.Text)
+		seen := make(map[string]struct{}, len(segments))
+		normalized := make([]string, 0, len(segments))
+		for _, seg := range segments {
+			n := t.normalizer.Normalize(seg)
+			if _, ok := seen[n]; ok {
+				continue
+			}
+			seen[n] = struct{}{}
+			normalized = append(normalized, n)
+		}
+
+		results = append(results, WordTokens{
+			Original: original,
+			Segments: normalized,
+		})
+	}
+
+	return results
+}
+
 // Tokenize processes input text and returns deduplicated tokens.
 func (t *Tokenizer) Tokenize(text string) []string {
 	rawTokens := SplitWords(text)

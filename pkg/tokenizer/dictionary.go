@@ -1,7 +1,6 @@
 package tokenizer
 
 import (
-	"bufio"
 	"os"
 	"sort"
 	"strings"
@@ -11,26 +10,34 @@ import (
 )
 
 // Dictionary holds German compound word components in an FST for fast lookups.
+// The source-of-truth words list is loaded/persisted via a DictSource (local
+// file or S3). The FST is always a local file at fstPath.
 type Dictionary struct {
 	fst     *vellum.FST
 	words   map[string]struct{} // Source of truth for modifications
+	source  DictSource
 	fstPath string
-	txtPath string
 	mu      sync.RWMutex
 }
 
-// NewDictionary loads the German compound word components dictionary from file into an FST.
-// If FST doesn't exist, builds it from the text file.
+// NewDictionary loads the dictionary from a local .txt file. The FST is built
+// at the sibling `.fst` path (e.g. `dict.txt` → `dict.fst`).
+//
+// This is a thin wrapper over NewDictionaryWithSource using a FileSource.
 func NewDictionary(txtPath string) (*Dictionary, error) {
-	fstPath := strings.TrimSuffix(txtPath, ".txt") + ".fst"
+	return NewDictionaryWithSource(&FileSource{Path: txtPath}, defaultFSTPath(txtPath))
+}
 
+// NewDictionaryWithSource loads the dictionary from the given source. The
+// compiled FST is read from / written to fstPath (always a local file).
+func NewDictionaryWithSource(source DictSource, fstPath string) (*Dictionary, error) {
 	d := &Dictionary{
 		words:   make(map[string]struct{}, 35000),
+		source:  source,
 		fstPath: fstPath,
-		txtPath: txtPath,
 	}
 
-	if err := d.loadTextFile(); err != nil {
+	if err := d.loadWords(); err != nil {
 		return nil, err
 	}
 
@@ -41,23 +48,21 @@ func NewDictionary(txtPath string) (*Dictionary, error) {
 	return d, nil
 }
 
-// loadTextFile reads words from the source text file.
-func (d *Dictionary) loadTextFile() error {
-	file, err := os.Open(d.txtPath)
+// loadWords pulls raw lines from the source and applies the dictionary's
+// parsing rules (skip blank/comment lines, trim, lowercase).
+func (d *Dictionary) loadWords() error {
+	lines, err := d.source.Load()
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		word := strings.TrimSpace(scanner.Text())
+	for _, line := range lines {
+		word := strings.TrimSpace(line)
 		if word == "" || strings.HasPrefix(word, "#") {
 			continue
 		}
 		d.words[strings.ToLower(word)] = struct{}{}
 	}
-	return scanner.Err()
+	return nil
 }
 
 // loadOrBuildFST loads existing FST or builds a new one.
@@ -104,7 +109,7 @@ func (d *Dictionary) RemoveWord(word string) error {
 	return d.rebuildFST()
 }
 
-// RebuildFST rebuilds the FST from the current word set and saves to disk.
+// RebuildFST rebuilds the FST from the current word set and persists to the source.
 func (d *Dictionary) RebuildFST() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -124,7 +129,6 @@ func (d *Dictionary) rebuildFST() error {
 	}
 	sort.Strings(sortedWords)
 
-	// Create FST file
 	fstFile, err := os.Create(d.fstPath)
 	if err != nil {
 		return err
@@ -156,29 +160,7 @@ func (d *Dictionary) rebuildFST() error {
 	}
 	d.fst = fst
 
-	return d.saveTextFile()
-}
-
-// saveTextFile writes the current word set back to the text file.
-func (d *Dictionary) saveTextFile() error {
-	sortedWords := make([]string, 0, len(d.words))
-	for word := range d.words {
-		sortedWords = append(sortedWords, word)
-	}
-	sort.Strings(sortedWords)
-
-	file, err := os.Create(d.txtPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	for _, word := range sortedWords {
-		if _, err := file.WriteString(word + "\n"); err != nil {
-			return err
-		}
-	}
-	return nil
+	return d.source.Save(sortedWords)
 }
 
 // Close releases FST resources.
