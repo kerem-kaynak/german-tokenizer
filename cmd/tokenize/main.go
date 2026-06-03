@@ -20,8 +20,7 @@ func main() {
 	dictPath := os.Args[1]
 
 	tok, err := tokenizer.NewTokenizer(dictPath, tokenizer.Config{
-		Cache:             true,
-		LowercaseOriginal: true,
+		Cache: true,
 		Normalizers: tokenizer.NormalizerConfig{
 			NFKDDecompose:        true,
 			RemoveControlChars:   true,

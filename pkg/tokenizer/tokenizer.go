@@ -2,9 +2,8 @@ package tokenizer
 
 // Config holds all tokenizer configuration. All fields must be explicitly set.
 type Config struct {
-	Cache             bool
-	LowercaseOriginal bool
-	Normalizers       NormalizerConfig
+	Cache       bool
+	Normalizers NormalizerConfig
 }
 
 // NormalizerConfig specifies which normalization steps to apply.
@@ -54,10 +53,9 @@ func (nc NormalizerConfig) buildNormalizer() *Normalizer {
 
 // Tokenizer is the main German tokenizer.
 type Tokenizer struct {
-	dict                     *Dictionary
-	normalizer               *Normalizer
-	splitter                 *CompoundSplitter
-	includeLowercaseOriginal bool
+	dict       *Dictionary
+	normalizer *Normalizer
+	splitter   *CompoundSplitter
 }
 
 // NewTokenizer creates a tokenizer with explicit configuration.
@@ -65,8 +63,7 @@ type Tokenizer struct {
 // Example usage:
 //
 //	tok, _ := NewTokenizer(dictPath, Config{
-//	    Cache:             true,
-//	    LowercaseOriginal: true,
+//	    Cache: true,
 //	    Normalizers: NormalizerConfig{
 //	        NFKDDecompose:        true,
 //	        RemoveControlChars:   true,
@@ -96,45 +93,41 @@ func NewTokenizer(dictPath string, cfg Config) (*Tokenizer, error) {
 	}
 
 	return &Tokenizer{
-		dict:                     dict,
-		normalizer:               normalizer,
-		splitter:                 splitter,
-		includeLowercaseOriginal: cfg.LowercaseOriginal,
+		dict:       dict,
+		normalizer: normalizer,
+		splitter:   splitter,
 	}, nil
 }
 
-// Tokenize processes input text and returns deduplicated tokens.
-func (t *Tokenizer) Tokenize(text string) []string {
-	rawTokens := SplitWords(text)
+// WordTokens is the per-word output of Tokenize. Whole is the lowercase form of
+// the input word with umlauts preserved (via LowercaseOnly). Parts is the
+// normalized compound segments in splitter order.
+type WordTokens struct {
+	Whole string   `json:"whole"`
+	Parts []string `json:"parts"`
+}
 
-	resultSet := make(map[string]struct{})
-	var results []string
+// Tokenize returns one WordTokens entry per detected word, preserving per-word
+// boundaries. No cross-word deduplication.
+func (t *Tokenizer) Tokenize(text string) []WordTokens {
+	rawTokens := SplitWords(text)
+	var results []WordTokens
 
 	for _, raw := range rawTokens {
 		if raw.Type != TokenWord {
 			continue
 		}
 
-		// Compound decomposition
 		segments := t.splitter.Split(raw.Text)
-
-		// Add lowercase original (preserves umlauts) if enabled
-		if t.includeLowercaseOriginal {
-			original := t.normalizer.LowercaseOnly(raw.Text)
-			if _, exists := resultSet[original]; !exists {
-				resultSet[original] = struct{}{}
-				results = append(results, original)
-			}
-		}
-
-		// Add normalized+stemmed segments
+		parts := make([]string, 0, len(segments))
 		for _, seg := range segments {
-			normalized := t.normalizer.Normalize(seg)
-			if _, exists := resultSet[normalized]; !exists {
-				resultSet[normalized] = struct{}{}
-				results = append(results, normalized)
-			}
+			parts = append(parts, t.normalizer.Normalize(seg))
 		}
+
+		results = append(results, WordTokens{
+			Whole: t.normalizer.LowercaseOnly(raw.Text),
+			Parts: parts,
+		})
 	}
 
 	return results
@@ -175,9 +168,4 @@ func (t *Tokenizer) ClearCache() {
 // CacheEnabled returns true if caching is enabled.
 func (t *Tokenizer) CacheEnabled() bool {
 	return t.splitter.CacheEnabled()
-}
-
-// LowercaseOriginalEnabled returns true if lowercase original output is enabled.
-func (t *Tokenizer) LowercaseOriginalEnabled() bool {
-	return t.includeLowercaseOriginal
 }

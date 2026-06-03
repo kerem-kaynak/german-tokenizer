@@ -10,7 +10,7 @@ A high-performance German text tokenizer for search and NLP applications. Specia
 - **FST-based dictionary lookups**: Uses finite state transducers for O(n) dictionary lookups where n is word length
 - **Configurable normalization pipeline**: NFKD decomposition, lowercase, ß→ss conversion, German stemming, and more
 - **LRU cache**: 100k entry cache for compound splits (~10MB memory)
-- **Dual output**: Emits both original tokens (with umlauts preserved) and normalized/stemmed tokens
+- **Structured output**: Returns per-word `{whole, parts}` so callers can use the umlaut-preserved whole word, the normalized compound parts, or both
 - **Runtime dictionary updates**: Add or remove words without restarting
 
 ## Installation
@@ -31,8 +31,7 @@ import (
 
 func main() {
     tok, err := tokenizer.NewTokenizer("path/to/dictionary.txt", tokenizer.Config{
-        Cache:             true,
-        LowercaseOriginal: true,
+        Cache: true,
         Normalizers: tokenizer.NormalizerConfig{
             NFKDDecompose:        true,
             RemoveControlChars:   true,
@@ -51,7 +50,7 @@ func main() {
 
     tokens := tok.Tokenize("Brandschutzkonzept")
     fmt.Println(tokens)
-    // Output: [brandschutzkonzept brand schutz konzept]
+    // Output: [{brandschutzkonzept [brand schutz konzept]}]
 }
 ```
 
@@ -83,9 +82,8 @@ All configuration is explicit. No hidden defaults.
 
 ```go
 type Config struct {
-    Cache             bool             // Enable LRU cache for compound splits
-    LowercaseOriginal bool             // Include lowercase original in output
-    Normalizers       NormalizerConfig // Which normalizers to apply
+    Cache       bool             // Enable LRU cache for compound splits
+    Normalizers NormalizerConfig // Which normalizers to apply
 }
 
 type NormalizerConfig struct {
@@ -105,8 +103,7 @@ type NormalizerConfig struct {
 **Full normalization (search indexing)**:
 ```go
 tokenizer.Config{
-    Cache:             true,
-    LowercaseOriginal: true,
+    Cache: true,
     Normalizers: tokenizer.NormalizerConfig{
         NFKDDecompose:        true,
         RemoveControlChars:   true,
@@ -123,8 +120,7 @@ tokenizer.Config{
 **Preserve umlauts (exact matching)**:
 ```go
 tokenizer.Config{
-    Cache:             true,
-    LowercaseOriginal: true,
+    Cache: true,
     Normalizers: tokenizer.NormalizerConfig{
         NFKDDecompose:        false,
         RemoveControlChars:   true,
@@ -141,9 +137,8 @@ tokenizer.Config{
 **No cache (memory constrained)**:
 ```go
 tokenizer.Config{
-    Cache:             false,  // Disable cache
-    LowercaseOriginal: true,
-    Normalizers:       // ...
+    Cache:       false, // Disable cache
+    Normalizers: //   ...
 }
 ```
 
@@ -181,17 +176,19 @@ Dictionary lookups use:
 
 ### 3. Token Output
 
-For each word, the tokenizer outputs:
-1. **Lowercase original** (if enabled): Preserves umlauts for exact matching
-2. **Normalized segments**: Each compound part, normalized and stemmed
+For each detected word, the tokenizer emits one `WordTokens` entry:
+
+- `Whole`: lowercase original, **umlauts preserved** (via `LowercaseOnly`)
+- `Parts`: each compound segment, fully normalized and stemmed, in splitter order
 
 ```
 Input: "Wärmedämmung"
-Output: ["wärmedämmung", "warm", "dammung"]
-         ↑ original      ↑ normalized segments
+Output: [{Whole: "wärmedämmung", Parts: ["warm", "dammung"]}]
 ```
 
-Tokens are deduplicated using set semantics.
+No cross-word deduplication — each input word produces exactly one entry, in
+input order. Callers pick whichever fields they need (e.g. index-side: `Whole`
++ `Parts`; query-filter side: `Parts` only).
 
 ### 4. Normalization Pipeline
 
@@ -232,12 +229,12 @@ make build
 
 # Tokenize a single input
 make run TEXT="Brandschutzkonzept"
-# Output: ["brandschutzkonzept","brand","schutz","konzept"]
+# Output: [{"whole":"brandschutzkonzept","parts":["brand","schutz","konzept"]}]
 
 # Interactive mode
 make demo
 > Wärmedämmung
-  ["wärmedämmung","warm","dammung"]
+  [{"whole":"wärmedämmung","parts":["warm","dammung"]}]
 ```
 
 ### Dictionary Management
@@ -293,8 +290,14 @@ make throughput
 // Create tokenizer
 tok, err := tokenizer.NewTokenizer(dictPath string, cfg Config) (*Tokenizer, error)
 
-// Tokenize text
-tokens := tok.Tokenize(text string) []string
+// Tokenize text — one WordTokens per input word, in input order, no dedup
+tokens := tok.Tokenize(text string) []WordTokens
+
+// Per-word output type (JSON tags shown for wire use)
+type WordTokens struct {
+    Whole string   `json:"whole"` // lowercase original, umlauts preserved
+    Parts []string `json:"parts"` // normalized compound segments, splitter order
+}
 
 // Dictionary management (FST rebuilt immediately, persisted to disk)
 err := tok.AddWord(word string) error
@@ -307,7 +310,6 @@ tok.CacheEnabled() bool
 
 // Info
 tok.DictionaryWordCount() int
-tok.LowercaseOriginalEnabled() bool
 
 // Cleanup
 tok.Close() error
