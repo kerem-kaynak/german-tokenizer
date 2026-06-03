@@ -3,6 +3,7 @@ package tokenizer
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -27,8 +28,7 @@ func getTestDictPath() string {
 // testConfig returns a Config with all features enabled for tests.
 func testConfig() Config {
 	return Config{
-		Cache:             true,
-		LowercaseOriginal: true,
+		Cache: true,
 		Normalizers: NormalizerConfig{
 			NFKDDecompose:        true,
 			RemoveControlChars:   true,
@@ -42,6 +42,20 @@ func testConfig() Config {
 	}
 }
 
+// flatten returns the union of every Whole and every Parts entry across the
+// result, so tests can assert "this token appears anywhere in the output"
+// without caring about per-word grouping.
+func flatten(words []WordTokens) map[string]bool {
+	seen := make(map[string]bool)
+	for _, w := range words {
+		seen[w.Whole] = true
+		for _, p := range w.Parts {
+			seen[p] = true
+		}
+	}
+	return seen
+}
+
 func TestTokenizer_Tokenize(t *testing.T) {
 	dictPath := getTestDictPath()
 	tok, err := NewTokenizer(dictPath, testConfig())
@@ -52,11 +66,11 @@ func TestTokenizer_Tokenize(t *testing.T) {
 
 	tests := []struct {
 		input    string
-		contains []string // tokens that must be present (normalized forms)
+		contains []string // tokens that must be present (as Whole or as a Part)
 	}{
 		{
 			input:    "Wärmedämmung",
-			contains: []string{"wärmedämmung"}, // Original preserved, segments are normalized
+			contains: []string{"wärmedämmung"}, // Whole preserves umlauts; parts are stemmed
 		},
 		{
 			input:    "Brandschutzkonzept",
@@ -78,40 +92,58 @@ func TestTokenizer_Tokenize(t *testing.T) {
 
 	for _, tt := range tests {
 		result := tok.Tokenize(tt.input)
-		resultSet := make(map[string]bool)
-		for _, tok := range result {
-			resultSet[tok] = true
-		}
+		seen := flatten(result)
 
 		for _, expected := range tt.contains {
-			if !resultSet[expected] {
-				t.Errorf("Tokenize(%q) missing expected token %q, got %v", tt.input, expected, result)
+			if !seen[expected] {
+				t.Errorf("Tokenize(%q) missing expected token %q, got %+v", tt.input, expected, result)
 			}
 		}
 	}
 }
 
-func TestTokenizer_Deduplication(t *testing.T) {
-	dictPath := getTestDictPath()
-	tok, err := NewTokenizer(dictPath, testConfig())
+// TestTokenizer_Structure pins the exact WordTokens shape: Whole is the
+// lowercased-with-umlauts input word, Parts are the normalized splitter
+// segments in order, one entry per input word.
+func TestTokenizer_Structure(t *testing.T) {
+	tok, err := NewTokenizer(getTestDictPath(), testConfig())
 	if err != nil {
 		t.Fatalf("Failed to create tokenizer: %v", err)
 	}
 	defer tok.Close()
 
-	// "Haus" should deduplicate to just "haus" (original and normalized are the same)
-	result := tok.Tokenize("Haus")
+	result := tok.Tokenize("Brandschutzkonzept")
 
-	// Count occurrences of "haus"
-	count := 0
-	for _, token := range result {
-		if token == "haus" {
-			count++
-		}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 WordTokens, got %d: %+v", len(result), result)
 	}
+	if result[0].Whole != "brandschutzkonzept" {
+		t.Errorf("Whole: want %q, got %q", "brandschutzkonzept", result[0].Whole)
+	}
+	want := []string{"brand", "schutz", "konzept"}
+	if !slices.Equal(result[0].Parts, want) {
+		t.Errorf("Parts: want %v, got %v", want, result[0].Parts)
+	}
+}
 
-	if count != 1 {
-		t.Errorf("Expected 'haus' to appear exactly once, got %d times in %v", count, result)
+// TestTokenizer_NoCrossWordDedup pins the "one entry per detected word, no
+// global dedup" contract that lets the query side weight by word position.
+func TestTokenizer_NoCrossWordDedup(t *testing.T) {
+	tok, err := NewTokenizer(getTestDictPath(), testConfig())
+	if err != nil {
+		t.Fatalf("Failed to create tokenizer: %v", err)
+	}
+	defer tok.Close()
+
+	result := tok.Tokenize("Haus Haus")
+
+	if len(result) != 2 {
+		t.Fatalf("expected 2 WordTokens for repeated input, got %d: %+v", len(result), result)
+	}
+	for i, w := range result {
+		if w.Whole != "haus" {
+			t.Errorf("result[%d].Whole: want %q, got %q", i, "haus", w.Whole)
+		}
 	}
 }
 
@@ -125,16 +157,14 @@ func TestTokenizer_MultipleWords(t *testing.T) {
 
 	result := tok.Tokenize("Der fährt")
 
-	// Should contain tokens from both words
-	resultSet := make(map[string]bool)
-	for _, tok := range result {
-		resultSet[tok] = true
+	if len(result) != 2 {
+		t.Errorf("Tokenize('Der fährt') expected 2 WordTokens (one per word), got %d: %+v", len(result), result)
 	}
 
-	expected := []string{"der", "fährt"}
-	for _, e := range expected {
-		if !resultSet[e] {
-			t.Errorf("Tokenize('Der fährt') missing expected token %q, got %v", e, result)
+	seen := flatten(result)
+	for _, expected := range []string{"der", "fährt"} {
+		if !seen[expected] {
+			t.Errorf("Tokenize('Der fährt') missing expected token %q, got %+v", expected, result)
 		}
 	}
 }
@@ -144,8 +174,7 @@ func TestTokenizer_WithCustomNormalizer(t *testing.T) {
 
 	// Create tokenizer with custom normalizer config (without stemming)
 	tok, err := NewTokenizer(dictPath, Config{
-		Cache:             true,
-		LowercaseOriginal: true,
+		Cache: true,
 		Normalizers: NormalizerConfig{
 			NFKDDecompose:        true,
 			RemoveControlChars:   false,
@@ -164,45 +193,10 @@ func TestTokenizer_WithCustomNormalizer(t *testing.T) {
 
 	result := tok.Tokenize("Größe")
 
-	// Without stemming, should get "grosse" not stemmed form
-	resultSet := make(map[string]bool)
-	for _, tok := range result {
-		resultSet[tok] = true
-	}
-
-	if !resultSet["grosse"] {
-		t.Errorf("Expected 'grosse' in result, got %v", result)
-	}
-}
-
-func TestTokenizer_WithoutLowercaseOriginal(t *testing.T) {
-	dictPath := getTestDictPath()
-
-	cfg := testConfig()
-	cfg.LowercaseOriginal = false
-
-	tok, err := NewTokenizer(dictPath, cfg)
-	if err != nil {
-		t.Fatalf("Failed to create tokenizer: %v", err)
-	}
-	defer tok.Close()
-
-	result := tok.Tokenize("Brandschutzkonzept")
-
-	// Without lowercase original, should NOT contain "brandschutzkonzept"
-	// but should contain the normalized segments
-	resultSet := make(map[string]bool)
-	for _, tok := range result {
-		resultSet[tok] = true
-	}
-
-	if resultSet["brandschutzkonzept"] {
-		t.Errorf("Expected 'brandschutzkonzept' to NOT be in result with LowercaseOriginal=false, got %v", result)
-	}
-
-	// Should still have segments
-	if !resultSet["brand"] {
-		t.Errorf("Expected 'brand' in result, got %v", result)
+	// Without stemming, parts should contain "grosse" (not the stemmed form)
+	seen := flatten(result)
+	if !seen["grosse"] {
+		t.Errorf("Expected 'grosse' in result, got %+v", result)
 	}
 }
 
@@ -224,13 +218,10 @@ func TestTokenizer_WithoutCache(t *testing.T) {
 
 	// Should still tokenize correctly
 	result := tok.Tokenize("Brandschutzkonzept")
-	resultSet := make(map[string]bool)
-	for _, tok := range result {
-		resultSet[tok] = true
-	}
+	seen := flatten(result)
 
-	if !resultSet["brand"] {
-		t.Errorf("Expected 'brand' in result, got %v", result)
+	if !seen["brand"] {
+		t.Errorf("Expected 'brand' in result, got %+v", result)
 	}
 }
 

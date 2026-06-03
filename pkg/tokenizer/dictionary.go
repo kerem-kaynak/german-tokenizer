@@ -1,8 +1,8 @@
 package tokenizer
 
 import (
-	"bufio"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -14,53 +14,79 @@ import (
 type Dictionary struct {
 	fst     *vellum.FST
 	words   map[string]struct{} // Source of truth for modifications
-	fstPath string
-	txtPath string
+	source  dictSource          // Where the word list is read from / written to
+	fstPath string              // FST is always a local file
 	mu      sync.RWMutex
 }
 
-// NewDictionary loads the German compound word components dictionary from file into an FST.
-// If FST doesn't exist, builds it from the text file.
-func NewDictionary(txtPath string) (*Dictionary, error) {
-	fstPath := strings.TrimSuffix(txtPath, ".txt") + ".fst"
+// NewDictionary loads the German compound word components dictionary.
+//
+// If path begins with "s3://" (e.g. "s3://my-bucket/dicts/german.txt") the
+// word list is read from S3 and the FST is built into a fresh file under
+// os.TempDir()/german-tokenizer/. Otherwise path is a local .txt file and
+// the FST is cached alongside it (".txt" → ".fst") — existing behavior.
+func NewDictionary(path string) (*Dictionary, error) {
+	d := &Dictionary{words: make(map[string]struct{}, 35000)}
 
-	d := &Dictionary{
-		words:   make(map[string]struct{}, 35000),
-		fstPath: fstPath,
-		txtPath: txtPath,
+	if strings.HasPrefix(path, "s3://") {
+		s3src, err := newS3Source(path)
+		if err != nil {
+			return nil, err
+		}
+		fstPath, err := s3FSTPath(s3src.bucket, s3src.key)
+		if err != nil {
+			return nil, err
+		}
+		d.source = s3src
+		d.fstPath = fstPath
+
+		if err := d.loadFromSource(); err != nil {
+			return nil, err
+		}
+		// S3 mode: load source, build FST locally, do NOT save back.
+		// Works under read-only S3 credentials; the temp FST is per-task scratch
+		// rebuilt on every startup (no cross-process FST sharing on ECS).
+		if _, err := d.buildFST(); err != nil {
+			return nil, err
+		}
+		return d, nil
 	}
 
-	if err := d.loadTextFile(); err != nil {
+	// Local file mode (unchanged behavior).
+	d.source = fileSource{path: path}
+	d.fstPath = strings.TrimSuffix(path, ".txt") + ".fst"
+	if err := d.loadFromSource(); err != nil {
 		return nil, err
 	}
-
 	if err := d.loadOrBuildFST(); err != nil {
 		return nil, err
 	}
-
 	return d, nil
 }
 
-// loadTextFile reads words from the source text file.
-func (d *Dictionary) loadTextFile() error {
-	file, err := os.Open(d.txtPath)
+// s3FSTPath returns where to put the locally-built FST for an S3-backed dictionary.
+// Slashes in the key are flattened so the result is a single filename.
+func s3FSTPath(bucket, key string) (string, error) {
+	dir := filepath.Join(os.TempDir(), "german-tokenizer")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, bucket+"_"+strings.ReplaceAll(key, "/", "_")+".fst"), nil
+}
+
+// loadFromSource reads the word list from the backing source into the word set.
+func (d *Dictionary) loadFromSource() error {
+	words, err := d.source.load()
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		word := strings.TrimSpace(scanner.Text())
-		if word == "" || strings.HasPrefix(word, "#") {
-			continue
-		}
-		d.words[strings.ToLower(word)] = struct{}{}
+	for _, word := range words {
+		d.words[word] = struct{}{}
 	}
-	return scanner.Err()
+	return nil
 }
 
-// loadOrBuildFST loads existing FST or builds a new one.
+// loadOrBuildFST loads existing FST or builds a new one (persisting via source).
 func (d *Dictionary) loadOrBuildFST() error {
 	if fst, err := vellum.Open(d.fstPath); err == nil {
 		d.fst = fst
@@ -111,8 +137,11 @@ func (d *Dictionary) RebuildFST() error {
 	return d.rebuildFST()
 }
 
-// rebuildFST rebuilds FST without locking (caller must hold lock).
-func (d *Dictionary) rebuildFST() error {
+// buildFST rebuilds the FST in-memory from d.words and writes it to fstPath.
+// Returns the sorted word slice so callers that also persist via source can
+// reuse the already-sorted list. Does NOT call source.save.
+// Caller must hold the write lock (or be the constructor, pre-publication).
+func (d *Dictionary) buildFST() ([]string, error) {
 	if d.fst != nil {
 		d.fst.Close()
 		d.fst = nil
@@ -124,61 +153,47 @@ func (d *Dictionary) rebuildFST() error {
 	}
 	sort.Strings(sortedWords)
 
-	// Create FST file
 	fstFile, err := os.Create(d.fstPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	builder, err := vellum.New(fstFile, nil)
 	if err != nil {
 		fstFile.Close()
-		return err
+		return nil, err
 	}
 
 	for _, word := range sortedWords {
 		if err := builder.Insert([]byte(word), 0); err != nil {
 			builder.Close()
 			fstFile.Close()
-			return err
+			return nil, err
 		}
 	}
 
 	if err := builder.Close(); err != nil {
 		fstFile.Close()
-		return err
+		return nil, err
 	}
 	fstFile.Close()
 
 	fst, err := vellum.Open(d.fstPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	d.fst = fst
-
-	return d.saveTextFile()
+	return sortedWords, nil
 }
 
-// saveTextFile writes the current word set back to the text file.
-func (d *Dictionary) saveTextFile() error {
-	sortedWords := make([]string, 0, len(d.words))
-	for word := range d.words {
-		sortedWords = append(sortedWords, word)
-	}
-	sort.Strings(sortedWords)
-
-	file, err := os.Create(d.txtPath)
+// rebuildFST builds the FST and persists the word list back through the source.
+// Caller must hold the write lock.
+func (d *Dictionary) rebuildFST() error {
+	sortedWords, err := d.buildFST()
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-
-	for _, word := range sortedWords {
-		if _, err := file.WriteString(word + "\n"); err != nil {
-			return err
-		}
-	}
-	return nil
+	return d.source.save(sortedWords)
 }
 
 // Close releases FST resources.
