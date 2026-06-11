@@ -4,7 +4,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/kljensen/snowball"
+	"github.com/blevesearch/snowballstem"
+	"github.com/blevesearch/snowballstem/german"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -129,11 +130,12 @@ func RemoveCombiningMarks(s string) string {
 	return result.String()
 }
 
-// StemGerman applies the German Snowball stemmer.
+// StemGerman applies the German Snowball stemmer. It runs last in the
+// pipeline, on lowercase folded ASCII; folding beforehand is equivalent to
+// the algorithm's own prelude (ß→ss) and postlude (umlaut folding), so
+// outputs match canonical Snowball (verified against the snowball-data corpus).
 func StemGerman(s string) string {
-	stemmed, err := snowball.Stem(s, "german", true)
-	if err != nil {
-		return s
-	}
-	return stemmed
+	env := snowballstem.NewEnv(s)
+	german.Stem(env)
+	return env.Current()
 }

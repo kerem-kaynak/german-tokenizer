@@ -94,7 +94,7 @@ type NormalizerConfig struct {
     ExpandLigatures      bool // æ→ae, œ→oe
     ConvertEszett        bool // ß→ss
     RemoveCombiningMarks bool // Remove combining diacritics (ä→a after NFKD)
-    StemGerman           bool // Apply Snowball German stemmer
+    StemGerman           bool // Apply Snowball German stemmer (blevesearch/snowballstem)
 }
 ```
 
@@ -203,6 +203,17 @@ Each segment passes through the configured normalizers in order:
   → StemGerman: "gross"
 ```
 
+Stemming uses the official Snowball German algorithm via
+[blevesearch/snowballstem](https://github.com/blevesearch/snowballstem)
+(the Snowball compiler's generated Go output, as used by bleve). It conflates
+inflected forms (`Dämmungen` and `Dämmung` both → `dammung`, `Wärme` → `warm`)
+but is deliberately conservative with derivational suffixes: `-ung` is only
+stripped from words long enough to have a region R2 (`Bezeichnung` → `bezeichn`,
+but `Dämmung` → `dammung`, not `damm`). Running the stemmer after umlaut/ß
+folding is output-equivalent to canonical Snowball, which performs the same
+folding internally (prelude ß→ss, postlude ä/ö/ü→a/o/u) — pinned against the
+official snowball-data corpus in `TestStemGerman_SnowballGroundTruth`.
+
 ### 5. FST Dictionary
 
 The dictionary uses a Finite State Transducer (FST) via [blevesearch/vellum](https://github.com/blevesearch/vellum):
@@ -265,12 +276,12 @@ Benchmarks on Apple M4 Pro:
 
 | Operation | Throughput | Latency |
 |-----------|------------|---------|
-| Single word tokenization | 720k ops/sec | 1.4μs |
-| Long compound tokenization | 530k ops/sec | 1.9μs |
-| Sentence (10 words) | 200k ops/sec | 4.9μs |
-| Dictionary lookup | 273M ops/sec | 4ns |
-| Normalizer (full pipeline) | 1.4M ops/sec | 736ns |
-| Cache hit | 54M ops/sec | 19ns |
+| Single word tokenization | 710k ops/sec | 1.4μs |
+| Long compound tokenization | 440k ops/sec | 2.3μs |
+| Sentence (10 words) | 180k ops/sec | 5.6μs |
+| Dictionary lookup | 8.1M ops/sec | 123ns |
+| Normalizer (full pipeline) | 1.2M ops/sec | 824ns |
+| Cache hit | 59M ops/sec | 17ns |
 
 Run benchmarks on your hardware:
 
