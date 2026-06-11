@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kerem-kaynak/german-tokenizer/pkg/tokenizer"
+	"github.com/kerem-kaynak/german-tokenizer/v2/pkg/tokenizer"
 )
 
 const (

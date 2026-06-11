@@ -1,4 +1,4 @@
-module github.com/kerem-kaynak/german-tokenizer
+module github.com/kerem-kaynak/german-tokenizer/v2
 
 go 1.24.1
 
