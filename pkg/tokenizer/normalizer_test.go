@@ -137,20 +137,54 @@ func TestRemoveCombiningMarks(t *testing.T) {
 }
 
 func TestStemGerman(t *testing.T) {
-	// Note: Snowball stemmer behavior varies - just test it doesn't crash
-	tests := []string{
-		"haus",
-		"warm",
-		"warme",
-		"laufen",
-		"arbeiten",
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"haus", "haus"},
+		{"warm", "warm"},
+		{"warme", "warm"},
+		{"laufen", "lauf"},
+		{"arbeiten", "arbeit"},
 	}
 
-	for _, input := range tests {
-		result := StemGerman(input)
-		// Just verify it produces some output
-		if result == "" {
-			t.Errorf("StemGerman(%q) returned empty string", input)
+	for _, tt := range tests {
+		result := StemGerman(tt.input)
+		if result != tt.expected {
+			t.Errorf("StemGerman(%q) = %q, want %q", tt.input, result, tt.expected)
+		}
+	}
+}
+
+// TestStemGerman_SnowballGroundTruth pins the full pipeline against the
+// official snowball-data German corpus (github.com/snowballstem/snowball-data).
+// The pipeline folds umlauts/ß before stemming; this is output-equivalent to
+// canonical Snowball, which folds them internally (prelude ß→ss, postlude
+// ä/ö/ü→a/o/u). Note: -ung is only stripped when it lies in region R2, so
+// short words like Dämmung keep it while Bezeichnung loses it.
+func TestStemGerman_SnowballGroundTruth(t *testing.T) {
+	n := NewNormalizer()
+
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"Dämmung", "dammung"},   // -ung not in R2: kept
+		{"Dämmungen", "dammung"}, // plural -en stripped: conflates with singular
+		{"Dämme", "damm"},
+		{"Dämmerung", "dammer"}, // long enough: -ung in R2, stripped
+		{"Bezeichnung", "bezeichn"},
+		{"Größe", "gross"},
+		{"Meinung", "meinung"},
+		{"Wohnung", "wohnung"},
+		{"Wärme", "warm"},
+		{"schifffahrts", "schifffahrt"}, // linking -s after valid s-ending
+	}
+
+	for _, tt := range tests {
+		result := n.Normalize(tt.input)
+		if result != tt.expected {
+			t.Errorf("Normalize(%q) = %q, want %q", tt.input, result, tt.expected)
 		}
 	}
 }
@@ -160,23 +194,19 @@ func TestNormalizer_Normalize(t *testing.T) {
 
 	// Test the full pipeline output
 	tests := []struct {
-		input string
+		input    string
+		expected string
 	}{
-		{"Wärme"},
-		{"Größe"},
-		{"über"},
-		{"HAUS"},
+		{"Wärme", "warm"},
+		{"Größe", "gross"},
+		{"über", "uber"},
+		{"HAUS", "haus"},
 	}
 
 	for _, tt := range tests {
 		result := n.Normalize(tt.input)
-		// Just verify it produces some output without panicking
-		if result == "" {
-			t.Errorf("Normalize(%q) returned empty string", tt.input)
-		}
-		// Verify it's lowercase
-		if result != Lowercase(result) {
-			t.Errorf("Normalize(%q) = %q is not lowercase", tt.input, result)
+		if result != tt.expected {
+			t.Errorf("Normalize(%q) = %q, want %q", tt.input, result, tt.expected)
 		}
 	}
 }

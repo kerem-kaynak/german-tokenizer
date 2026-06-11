@@ -6,9 +6,9 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.11
 	github.com/aws/aws-sdk-go-v2/config v1.32.22
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.103.1
+	github.com/blevesearch/snowballstem v0.9.0
 	github.com/blevesearch/vellum v1.2.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/kljensen/snowball v0.10.0
 	golang.org/x/text v0.34.0
 )
 
