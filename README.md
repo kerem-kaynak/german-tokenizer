@@ -2,7 +2,7 @@
 
 A high-performance German text tokenizer for search and NLP applications. Specializes in compound word decomposition, a critical feature for German text processing.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/kerem-kaynak/german-tokenizer.svg)](https://pkg.go.dev/github.com/kerem-kaynak/german-tokenizer)
+[![Go Reference](https://pkg.go.dev/badge/github.com/kerem-kaynak/german-tokenizer/v2.svg)](https://pkg.go.dev/github.com/kerem-kaynak/german-tokenizer/v2)
 
 ## Features
 
@@ -16,7 +16,7 @@ A high-performance German text tokenizer for search and NLP applications. Specia
 ## Installation
 
 ```bash
-go get github.com/kerem-kaynak/german-tokenizer
+go get github.com/kerem-kaynak/german-tokenizer/v2
 ```
 
 ## Quick Start
@@ -26,7 +26,7 @@ package main
 
 import (
     "fmt"
-    "github.com/kerem-kaynak/german-tokenizer/pkg/tokenizer"
+    "github.com/kerem-kaynak/german-tokenizer/v2/pkg/tokenizer"
 )
 
 func main() {
